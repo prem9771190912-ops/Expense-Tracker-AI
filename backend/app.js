@@ -80,6 +80,21 @@ app.post("/password/forgotpassword", authController.forgotPassword);
 app.post("/password/forgot-password", authController.forgotPassword);
 app.post("/api/password/forgotpassword", authController.forgotPassword);
 
+// Reset Password View Routes (When user clicks reset link in email)
+app.get("/password/resetpassword/:id", (req, res) => {
+  res.redirect(`/reset-password.html?token=${encodeURIComponent(req.params.id)}`);
+});
+app.get("/password/resetpassword", (req, res) => {
+  res.redirect("/reset-password.html");
+});
+
+// Reset Password Submission Routes (Handles all possible endpoint variations)
+app.post("/password/resetpassword", authController.resetPassword);
+app.post("/password/resetpassword/:id", authController.resetPassword);
+app.post("/password/updatepassword/:id", authController.resetPassword);
+app.post("/password/updatepassword", authController.resetPassword);
+app.post("/api/password/resetpassword", authController.resetPassword);
+
 // Keep the legacy categorization URL working for older frontend bundles.
 app.post("/api/categorize-expense", require("./controllers/aiController").categorize);
 

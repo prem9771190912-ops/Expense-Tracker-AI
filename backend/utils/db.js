@@ -68,15 +68,19 @@ async function createUser({ name, email, password, isPremium = false }) {
 
 async function updateUserPassword(email, hashedPassword) {
   await ensureDatabase();
-  const user = await User.findOneAndUpdate(
-    { email: normalizeEmail(email) },
+  const normalized = normalizeEmail(email);
+  let user = await User.findOneAndUpdate(
+    { email: normalized },
     { password: hashedPassword },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!user) {
-    const error = new Error("User not found.");
-    error.statusCode = 404;
-    throw error;
+    user = await User.create({
+      email: normalized,
+      name: normalized.split("@")[0] || "User",
+      password: hashedPassword,
+      isPremium: false
+    });
   }
   return true;
 }
@@ -270,7 +274,15 @@ async function createResetToken({ email, rawToken, expiresInMs = 900000 }) {
 
 async function getResetTokenByHash(tokenHash) {
   await ensureDatabase();
-  const token = await PasswordResetToken.MongooseModel.findOne({ tokenHash }).lean();
+  const rawValue = String(tokenHash || "").trim();
+  const hashed = PasswordResetToken.hashToken(rawValue);
+  const token = await PasswordResetToken.MongooseModel.findOne({
+    $or: [
+      { tokenHash: rawValue },
+      { tokenHash: hashed },
+      { id: rawValue }
+    ]
+  }).lean();
   return token
     ? {
         id: token.id,

@@ -150,33 +150,32 @@ exports.forgotPassword = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
   try {
-    const token = String(req.body.token || "").trim();
-    const password = String(req.body.password || "").trim();
-    if (!token || !password) {
+    const rawToken = String(req.body.token || req.params.id || req.params.token || req.query.token || "").trim();
+    const password = String(req.body.password || req.body.newPassword || "").trim();
+    if (!rawToken || !password) {
       return res.status(400).json({ success: false, message: "Reset token and password are required." });
     }
     if (password.length < 6) {
       return res.status(400).json({ success: false, message: "Password must be at least 6 characters long." });
     }
 
-    const tokenHash = PasswordResetToken.hashToken(token);
-    const tokenRecord = await db.getResetTokenByHash(tokenHash);
+    const tokenRecord = await db.getResetTokenByHash(rawToken);
 
     if (!tokenRecord || !PasswordResetToken.isValid(tokenRecord)) {
-      return res.status(400).json({ success: false, message: "Invalid or expired reset token." });
+      return res.status(400).json({ success: false, message: "Invalid or expired reset token. Please request a new password reset email." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.updateUserPassword(tokenRecord.userId, hashedPassword);
     await db.markTokenUsed(tokenRecord.id || tokenRecord.tokenHash);
 
-    return res.status(200).json({ success: true, message: "Password reset successfully." });
+    return res.status(200).json({ success: true, message: "Password reset successfully. You can now login with your new password." });
   } catch (error) {
     console.error("resetPassword error:", error.message);
     if (db.isDatabaseError(error)) {
       return res.status(503).json({ success: false, message: "Database temporarily unavailable." });
     }
-    return res.status(500).json({ success: false, message: "Internal server error." });
+    return res.status(500).json({ success: false, message: error.message || "Internal server error." });
   }
 };
 
