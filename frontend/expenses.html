@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity Log — SpendWise AI</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="app-nav">
+    <div class="nav-container">
+      <a href="index.html" class="nav-brand">
+        <span class="brand-icon">✦</span>
+        <span>SpendWise AI</span>
+      </a>
+      
+      <div class="nav-menu">
+        <a href="index.html" class="nav-item">⚡ Smart Hub</a>
+        <a href="react.html" class="nav-item">⚛️ React App</a>
+        <a href="expenses.html" class="nav-item active">📋 Activity Log</a>
+        <a href="report.html" class="nav-item">📊 Reports</a>
+      </div>
+
+      <div class="nav-actions">
+        <button id="logoutBtn" class="logout-btn" type="button">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="dashboard">
+    <!-- Page Header -->
+    <header class="page-header">
+      <div>
+        <span class="eyebrow">Real-Time Ledger</span>
+        <h1>Detailed Expense Activity</h1>
+        <p class="subtitle">Every transaction logged with instant AI intelligence, classified and paginated (10 per page).</p>
+      </div>
+    </header>
+
+    <!-- Top Grid: Add Form + Total Card -->
+    <section class="dashboard-grid">
+      <!-- Add Expense Form Panel -->
+      <div class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">New Transaction</span>
+            <h2>Record an Expense</h2>
+          </div>
+          <span class="ai-mark">Live Suggestion</span>
+        </div>
+
+        <form id="expenseForm">
+          <div class="form-group">
+            <label for="amount">Amount (₹)</label>
+            <input id="amount" type="number" min="0.01" step="0.01" placeholder="e.g. 450" required>
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description / Merchant</label>
+            <input id="description" type="text" placeholder="e.g. Organic Groceries at Whole Foods" required>
+          </div>
+
+          <div id="aiSuggestion" class="ai-suggestion" aria-live="polite">
+            AI category will automatically appear here as you type.
+          </div>
+
+          <button type="submit">+ Add Expense</button>
+        </form>
+      </div>
+
+      <!-- Quick Summary Panel -->
+      <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between; gap: 20px;">
+        <div>
+          <span class="eyebrow">Overview</span>
+          <h2>Your Balance Summary</h2>
+          <p class="subtitle" style="margin-bottom: 0;">Cumulative spending recorded across all your accounts.</p>
+        </div>
+
+        <div class="total-expense-card" style="text-align: left; padding: 24px;">
+          <span class="eyebrow" style="color: var(--emerald-text); margin-bottom: 6px;">Total Tracked Spending</span>
+          <span id="totalExpenseAmount" class="total-amount" style="font-size: 2.4rem;">₹0</span>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 1.3rem;">💡</span>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+            Tip: Be descriptive with your items (e.g. "Monthly Wifi bill", "Flight to Mumbai") for more accurate AI suggestions.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Expenses Table Panel -->
+    <section class="panel expense-panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">Activity Records</span>
+          <h2>Recent Expenses</h2>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Amount</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Classification Source</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="expenseTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Controls (10 items per page) -->
+      <div id="paginationContainer" class="pagination-wrap" style="display: none;">
+        <div class="pagination-info" id="paginationInfo">
+          Showing <b id="pageStart">0</b>–<b id="pageEnd">0</b> of <b id="totalItems">0</b> expenses
+          <span class="pagination-badge" id="pageBadge">Page 1 of 1</span>
+        </div>
+        <div class="pagination-controls">
+          <button type="button" id="firstPageBtn" class="pagination-btn" title="Go to First Page">⏮ First</button>
+          <button type="button" id="prevPageBtn" class="pagination-btn" title="Go to Previous Page">◀ Prev</button>
+          <div id="paginationNumbers" class="pagination-numbers"></div>
+          <button type="button" id="nextPageBtn" class="pagination-btn" title="Go to Next Page">Next ▶</button>
+          <button type="button" id="lastPageBtn" class="pagination-btn last-page-highlight" title="Go to Last Page">
+            ⏭ Last (<span id="lastPageNumberDisplay">1</span>)
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/expenses.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expense Reports & Analytics — SpendWise AI</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="app-nav">
+    <div class="nav-container">
+      <a href="index.html" class="nav-brand">
+        <span class="brand-icon">✦</span>
+        <span>SpendWise AI</span>
+      </a>
+      
+      <div class="nav-menu">
+        <a href="index.html" class="nav-item">⚡ Smart Hub</a>
+        <a href="react.html" class="nav-item">⚛️ React App</a>
+        <a href="expenses.html" class="nav-item">📋 Activity Log</a>
+        <a href="report.html" class="nav-item active">📊 Reports</a>
+      </div>
+
+      <div class="nav-actions">
+        <button id="logoutBtn" class="logout-btn" type="button">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="dashboard">
+    <header class="page-header">
+      <div>
+        <span class="eyebrow">Financial Analytics</span>
+        <h1>Spending Intelligence & Reports</h1>
+        <p class="subtitle">Deep insights into where your money goes across all categories.</p>
+      </div>
+    </header>
+
+    <div id="loadingIndicator">
+      <div class="empty-state">Calculating your spending patterns...</div>
+    </div>
+
+    <div id="reportContent" style="display: none;">
+      <!-- Key Metrics Row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-label">Total Outflow</span>
+          <span class="stat-value" id="repTotal" style="color: var(--emerald-text);">₹0.00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Transactions</span>
+          <span class="stat-value" id="repCount">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Average Transaction</span>
+          <span class="stat-value" id="repAvg">₹0.00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Top Category</span>
+          <span class="stat-value" id="repTop" style="color: var(--amber-text); font-size: 1.25rem;">—</span>
+        </div>
+      </div>
+
+      <!-- Category Breakdown Card -->
+      <section class="card">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Allocation</span>
+            <h2>Spending by Category</h2>
+            <p class="subtitle" style="margin-bottom: 0;">Percentage and volume breakdown of your recorded spending.</p>
+          </div>
+          <span class="ai-mark">Real-Time</span>
+        </div>
+
+        <div id="categoryList" style="margin-top: 24px;"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/report.js"></script>
+</body>
+</html>

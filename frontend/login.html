@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Expense Tracker</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main class="container">
+    <div class="card login-panel">
+      <div class="login-mark">⚡</div>
+      <h1>Welcome back</h1>
+      <p class="login-subtitle">Sign in to your account</p>
+
+      <form id="loginForm" autocomplete="off">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="name@example.com" autocomplete="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
+        </div>
+
+        <button type="submit" style="margin-top: 6px;">Login</button>
+      </form>
+
+      <!-- Forgot Password Button below Login Form -->
+      <button type="button" id="forgotPasswordBtn" class="secondary-btn" style="width: 100%; margin-top: 10px;">
+        🔑 Forgot Password?
+      </button>
+
+      <!-- Forgot Password Form (Displayed when user clicks Forgot Password) -->
+      <div id="forgotPasswordSection" style="display: none; margin-top: 16px;">
+        <form id="forgotPasswordForm" style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 14px;">
+            <h3 style="font-size: 0.95rem; margin-bottom: 4px; color: var(--emerald-text);">Reset Password</h3>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0;">
+              Enter your email ID below and we will send a password reset link to your email.
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label for="forgotEmail">Email ID</label>
+            <input id="forgotEmail" type="email" placeholder="name@example.com" autocomplete="email" required>
+          </div>
+
+          <button type="submit" id="forgotSubmitBtn">Send Reset Mail</button>
+          <button type="button" id="cancelForgotBtn" class="secondary-btn">← Back to Login</button>
+        </form>
+      </div>
+
+      <div class="auth-links">
+        <p style="color: var(--text-secondary); margin-bottom: 6px;">
+          Don't have an account? <a href="signup.html">Create an account</a>
+        </p>
+        <p style="font-size: 0.82rem;">
+          <a href="forgot-password.html">Dedicated Forgot Password Page</a>
+        </p>
+      </div>
+
+      <p id="message"></p>
+    </div>
+  </main>
+
+  <!-- Axios for API calls -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="js/login.js"></script>
+</body>
+
+</html>
