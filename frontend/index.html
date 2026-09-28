@@ -39,18 +39,27 @@
                 <p class="subtitle">Quickly log transactions with instant AI categorization and paginated ledger.</p>
             </div>
             <div class="header-actions">
-                <a href="react.html" class="btn" style="text-decoration: none;">⚛️ Open React App</a>
+                <button type="button" id="insightBtn" class="btn" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.35) 100%); color: var(--amber-text); border: 1px solid rgba(245, 158, 11, 0.4);">
+                    ✨ AI Spending Insight
+                </button>
+                <a href="react.html" class="btn secondary-btn" style="text-decoration: none;">⚛️ Open React App</a>
             </div>
         </header>
 
         <!-- Add Expense -->
         <section class="card">
-            <h2>Add Expense</h2>
+            <div class="panel-heading" style="margin-bottom: 14px;">
+                <div>
+                    <span class="eyebrow">New Transaction</span>
+                    <h2>Add Expense</h2>
+                </div>
+                <span class="ai-mark">Live AI Auto-Detection</span>
+            </div>
             <form id="form">
                 <input id="amount" type="number" min="0.01" step="0.01" placeholder="Amount (₹)" required>
-                <input id="description" type="text" placeholder="Description (e.g. Lunch)" required>
+                <input id="description" type="text" placeholder="Description (e.g. Swiggy biryani, Uber ride)" required>
                 <select id="category">
-                    <option value="">AI Category</option>
+                    <option value="">AI Auto-Detect</option>
                     <option value="Food">Food</option>
                     <option value="Travel">Travel</option>
                     <option value="Shopping">Shopping</option>
@@ -61,7 +70,8 @@
                     <option value="Salary">Salary</option>
                     <option value="Other">Other</option>
                 </select>
-                <button type="submit">Add Expense</button>
+                <button type="submit">+ Add Expense</button>
+                <div id="aiSuggestion" class="ai-suggestion" style="display: none; grid-column: 1 / -1; margin-top: 8px;"></div>
             </form>
             <p id="msg"></p>
         </section>

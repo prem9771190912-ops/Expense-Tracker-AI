@@ -353,3 +353,21 @@ if (logoutBtn) {
     window.location.href = "login.html";
   });
 }
+
+const insightBtn = document.getElementById("insightBtn");
+const insightContainer = document.getElementById("insightContainer");
+if (insightBtn && insightContainer) {
+  insightBtn.addEventListener("click", async () => {
+    insightContainer.style.display = "block";
+    insightContainer.innerHTML = '<div class="insight" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 16px 20px; color: var(--text-primary); font-size: 0.95rem;">✦ AI is analyzing your spending patterns...</div>';
+    try {
+      const user = getStoredUser();
+      const queryEmail = user?.email ? `?email=${encodeURIComponent(user.email)}` : "";
+      const res = await apiJson("/api/ai/insight" + queryEmail, { headers: authHeaders() });
+      const text = res.insight || res.message || "No insight available.";
+      insightContainer.innerHTML = `<div class="insight" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 16px 20px; color: var(--text-primary); font-size: 0.95rem; line-height: 1.5;">✨ <strong>AI Financial Insight:</strong> ${esc(text)}</div>`;
+    } catch (err) {
+      insightContainer.innerHTML = `<div class="empty-state" style="margin: 0;">${esc(err.message)}</div>`;
+    }
+  });
+}

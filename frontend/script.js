@@ -9,6 +9,7 @@ const insightBtn = document.getElementById("insightBtn");
 const amount = document.getElementById("amount");
 const description = document.getElementById("description");
 const category = document.getElementById("category");
+const aiSuggestion = document.getElementById("aiSuggestion");
 
 let authToken = localStorage.getItem("authToken") || localStorage.getItem("expenseTrackerToken");
 let currentUser = JSON.parse(localStorage.getItem("loggedInUser") || localStorage.getItem("expenseTrackerUser") || "null");
@@ -254,6 +255,46 @@ async function load(targetPage = currentPage) {
   }
 }
 
+let aiSuggestionTimer;
+let lastAutoCategory = "";
+
+if (description && aiSuggestion) {
+  description.addEventListener("input", () => {
+    clearTimeout(aiSuggestionTimer);
+    const val = description.value.trim();
+    if (!val) {
+      aiSuggestion.style.display = "none";
+      aiSuggestion.innerHTML = "";
+      if (category && category.value === lastAutoCategory) {
+        category.value = "";
+      }
+      return;
+    }
+
+    aiSuggestion.style.display = "block";
+    aiSuggestion.innerHTML = '<span style="opacity: 0.85;">✦ AI is analyzing...</span>';
+
+    aiSuggestionTimer = setTimeout(async () => {
+      try {
+        const res = await request("/api/categorize-expense", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({ description: val })
+        });
+        if (res && res.category) {
+          lastAutoCategory = res.category;
+          aiSuggestion.innerHTML = `✨ AI Suggestion: <strong>${esc(res.category)}</strong> <span style="font-size: 0.8rem; opacity: 0.7;">(${esc(res.source || "ai")})</span>`;
+          if (category && (!category.value || category.value === lastAutoCategory)) {
+            category.value = res.category;
+          }
+        }
+      } catch (err) {
+        aiSuggestion.innerHTML = '<span style="color: var(--text-secondary);">✦ AI ready (auto-classifies on add)</span>';
+      }
+    }, 350);
+  });
+}
+
 if (form) {
   form.onsubmit = async e => {
     e.preventDefault();
@@ -283,6 +324,11 @@ if (form) {
 
       msg.textContent = x.category ? `Categorized as: ${x.category}` : "Expense added.";
       form.reset();
+      if (aiSuggestion) {
+        aiSuggestion.style.display = "none";
+        aiSuggestion.innerHTML = "";
+      }
+      lastAutoCategory = "";
       await load(1);
     } catch (error) {
       msg.textContent = error.message;

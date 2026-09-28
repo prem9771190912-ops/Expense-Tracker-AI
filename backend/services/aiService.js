@@ -15,6 +15,8 @@ const categories = [
   "Other"
 ];
 
+let cloudErrorUntil = 0;
+
 function getApiKey() {
   const key = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
   if (!key || key === "demo_openrouter_api_key" || key.trim() === "") {
@@ -26,6 +28,7 @@ function getApiKey() {
 function getClient() {
   const apiKey = getApiKey();
   if (!apiKey) return null;
+  if (Date.now() < cloudErrorUntil) return null;
 
   if (cachedClient && lastApiKey === apiKey) {
     return cachedClient;
@@ -41,7 +44,7 @@ function getClient() {
       "HTTP-Referer": "http://localhost:5000",
       "X-Title": "Expense Tracker"
     },
-    timeout: 6000
+    timeout: 3000
   });
   lastApiKey = apiKey;
   return cachedClient;
@@ -181,7 +184,12 @@ async function categorizeExpense(description) {
         return { category: matched, source: "ai" };
       }
     } catch (err) {
-      console.warn("[AI Service] Cloud model error:", err.message, "- using smart local classifier.");
+      if (err.status === 401 || err.message?.includes("401") || err.message?.includes("User not found")) {
+        cloudErrorUntil = Date.now() + 60000;
+        console.warn("[AI Service] OpenRouter rejected key (401: " + (err.error?.message || err.message) + "). Bypassing cloud retry for 60s and using high-speed built-in semantic AI.");
+      } else {
+        console.warn("[AI Service] Cloud model warning:", err.message, "- using smart local classifier.");
+      }
     }
   }
 
