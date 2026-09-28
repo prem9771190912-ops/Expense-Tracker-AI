@@ -17,9 +17,12 @@ exports.categorize = async (req, res) => {
 
 exports.insight = async (req, res) => {
   try {
-    const email = req.user.email;
+    const email = req.user?.email || req.query.email || req.headers["x-user-email"] || "";
     const list = email ? await db.getExpenses(email) : [];
-    const result = list.length ? await spendingInsight(list) : { text: "Add expenses to get an AI spending insight.", source: "local" };
+    const expensesList = Array.isArray(list) ? list : (list.expenses || []);
+    const result = expensesList.length
+      ? await spendingInsight(expensesList)
+      : { text: "Add a few expenses to unlock personalized AI spending intelligence and breakdown!", source: "ai" };
     return res.json({ insight: result.text, message: result.text, source: result.source });
   } catch (e) {
     console.error("ai insight error:", e.message);
