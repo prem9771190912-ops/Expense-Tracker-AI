@@ -193,7 +193,7 @@ function renderLeaderboard(users) {
     if (premiumUserBadge) premiumUserBadge.style.display = "none";
   }
 
-  leaderboardTableBody.innerHTML = users.slice(0, 3).map((u, index) => {
+  leaderboardTableBody.innerHTML = users.map((u, index) => {
     const rank = u.rank || (index + 1);
     let rankBadge = `<span style="font-weight: 700; color: var(--text-muted);">#${rank}</span>`;
     if (rank === 1) rankBadge = `<span style="font-size: 1.15rem; filter: drop-shadow(0 0 6px rgba(234, 179, 8, 0.6)); font-weight: 800;">🥇 1</span>`;
@@ -205,9 +205,19 @@ function renderLeaderboard(users) {
                               (currentUserId && String(u.id || u._id || "") === currentUserId) ||
                               (currentUserName && String(u.name || "").trim().toLowerCase() === currentUserName);
 
+    const isUserPaidPremium = Boolean(
+      u.isPremium ||
+      u.ispremiumuser ||
+      (isThisCurrentUser && isPremiumUser)
+    );
+
     let statusBadge = "";
-    if (isHighestExpense) {
-      statusBadge = `<span style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(202, 138, 4, 0.45) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.6); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 10px rgba(234, 179, 8, 0.25);">👑 Premium Member (Rank Leader)</span>`;
+    if (isUserPaidPremium && isHighestExpense) {
+      statusBadge = `<span style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(202, 138, 4, 0.45) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.6); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 10px rgba(234, 179, 8, 0.25);">👑 Premium Member (#1)</span>`;
+    } else if (isUserPaidPremium) {
+      statusBadge = `<span style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(202, 138, 4, 0.35) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.5); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 8px rgba(234, 179, 8, 0.2);">⭐ Premium Member</span>`;
+    } else if (isHighestExpense) {
+      statusBadge = `<span style="background: rgba(234, 179, 8, 0.15); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">👑 Rank Leader</span>`;
     } else {
       statusBadge = `<span style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">Standard Member</span>`;
     }
@@ -216,8 +226,14 @@ function renderLeaderboard(users) {
       ? `<strong style="color: var(--emerald-text); font-size: 0.95rem;">${esc(u.name || "User")}</strong> <span style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">YOU</span>`
       : `<span style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600;">${esc(u.name || "User")}</span>`;
 
+    const rowBackground = isHighestExpense
+      ? 'background: rgba(234, 179, 8, 0.08); border-left: 3px solid #fde047;'
+      : (isThisCurrentUser
+        ? 'background: rgba(16, 185, 129, 0.06); border-left: 3px solid #10b981;'
+        : (isUserPaidPremium ? 'background: rgba(234, 179, 8, 0.03);' : ''));
+
     return `
-      <tr style="${isHighestExpense ? 'background: rgba(234, 179, 8, 0.08); border-left: 3px solid #fde047;' : (isThisCurrentUser ? 'background: rgba(16, 185, 129, 0.06); border-left: 3px solid #10b981;' : '')}">
+      <tr style="${rowBackground}">
         <td style="font-size: 1.05rem;">${rankBadge}</td>
         <td>
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -227,7 +243,7 @@ function renderLeaderboard(users) {
         <td style="text-align: center;">
           ${statusBadge}
         </td>
-        <td style="text-align: right; font-weight: 700; color: ${isHighestExpense ? '#fde047' : 'var(--emerald-text)'}; font-variant-numeric: tabular-nums; font-size: 1.05rem;">
+        <td style="text-align: right; font-weight: 700; color: ${isHighestExpense ? '#fde047' : (isUserPaidPremium ? '#fde047' : 'var(--emerald-text)')}; font-variant-numeric: tabular-nums; font-size: 1.05rem;">
           ₹${Number(u.totalExpense || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
       </tr>

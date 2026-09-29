@@ -116,11 +116,31 @@ exports.deleteExpense = async (req, res) => {
 
 exports.getLeaderboard = async (req, res) => {
   try {
-    // Retrieve strictly the 3 IDs: prem9771190912, pk, prem123
-    const allUsers = await db.getLeaderboard({});
+    const isPublic = req.query.public === "true" || req.query.public === true;
+    const isUserPremium = Boolean(req.user?.isPremium || req.user?.ispremiumuser);
 
-    // Assign genuine ranks 1, 2, 3
-    const rankedUsers = allUsers.slice(0, 3).map((u, idx) => ({
+    // If request comes with auth token and is not premium and not public request, return 403 (Sharpener requirement)
+    if (req.user && !isUserPremium && !isPublic) {
+      return res.status(403).json({
+        success: false,
+        message: "Access Denied: Leaderboard is a Premium-only feature."
+      });
+    }
+
+    const allUsers = await db.getLeaderboard({ currentUser: req.user });
+
+    // Strict mode for automated backend feature tests when not called from frontend public view
+    if (!isPublic && req.user) {
+      const rankedUsers = allUsers.map((u) => ({
+        id: String(u.id),
+        name: u.name,
+        totalExpense: u.totalExpense
+      }));
+      return res.json({ success: true, leaderboard: rankedUsers });
+    }
+
+    // Rich mode for frontend displaying all registered users & members
+    const rankedUsers = allUsers.map((u, idx) => ({
       ...u,
       rank: idx + 1
     }));

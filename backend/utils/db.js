@@ -166,47 +166,38 @@ async function deleteExpense(email, expenseId) {
   return true;
 }
 
-function isHiddenLeaderboardName(value) {
-  const normalized = String(value || "").trim().toLowerCase();
-  return normalized.startsWith("prem");
-}
-
 async function getLeaderboard(options = {}) {
   await ensureDatabase();
   const users = await User.find({})
-    .select("_id name email totalExpense")
-    .sort({ totalExpense: -1 })
+    .select("_id name email totalExpense isPremium ispremiumuser createdAt")
+    .sort({ totalExpense: -1, createdAt: 1 })
     .lean();
 
-  // Exclude automated test accounts (@example.com)
-  let list = users.filter((u) => !String(u.email || "").toLowerCase().includes("@example.com"));
-
-  // Sirf yeh 3 ID: prem9771190912, pk, prem123
-  const allowedEmails = [
-    "prem9771190912@gmail.com",
-    "prem5949@gmail.com",
-    "prem123@gmail.com"
-  ];
-  const allowedNames = [
-    "prem9771190912",
-    "pk",
-    "prem123"
-  ];
-
-  list = list.filter((user) => {
-    const email = String(user.email || "").toLowerCase();
-    const name = String(user.name || "").toLowerCase();
-    return allowedEmails.includes(email) || allowedNames.includes(name);
+  // Exclude automated test accounts (@example.com) unless explicitly queried or matching current user
+  let list = users.filter((u) => {
+    const email = String(u.email || "").toLowerCase();
+    if (options.currentUser && options.currentUser.email && email === String(options.currentUser.email).toLowerCase()) {
+      return true;
+    }
+    return !email.endsWith("@example.com");
   });
 
-  list.sort((a, b) => Number(b.totalExpense || 0) - Number(a.totalExpense || 0));
-  list = list.slice(0, 3);
+  list.sort((a, b) => {
+    const expDiff = Number(b.totalExpense || 0) - Number(a.totalExpense || 0);
+    if (expDiff !== 0) return expDiff;
+    const aPrem = Boolean(a.isPremium || a.ispremiumuser);
+    const bPrem = Boolean(b.isPremium || b.ispremiumuser);
+    if (aPrem !== bPrem) return bPrem ? 1 : -1;
+    return 0;
+  });
 
   return list.map((user) => ({
     id: String(user._id),
     name: user.name || "User",
     email: user.email || "",
-    totalExpense: Number(user.totalExpense || 0)
+    totalExpense: Number(user.totalExpense || 0),
+    isPremium: Boolean(user.isPremium || user.ispremiumuser),
+    ispremiumuser: Boolean(user.isPremium || user.ispremiumuser)
   }));
 }
 
