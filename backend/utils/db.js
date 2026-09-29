@@ -41,7 +41,7 @@ async function getExpenses(email, options = {}) {
     const skip = (currentPage - 1) * limit;
 
     const expenses = await Expense.find({ email: normalizedEmail })
-      .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1 })
+      .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1, date: 1 })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -66,7 +66,8 @@ async function getExpenses(email, options = {}) {
         category: expense.category,
         categorySource: expense.categorySource || "fallback",
         aiSuggested: Boolean(expense.aiSuggested),
-        createdAt: expense.createdAt
+        createdAt: expense.createdAt,
+        date: expense.date || expense.createdAt
       })),
       currentPage,
       hasNextPage,
@@ -83,7 +84,7 @@ async function getExpenses(email, options = {}) {
   }
 
   const expenses = await Expense.find({ email: normalizedEmail })
-    .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1 })
+    .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1, date: 1 })
     .sort({ createdAt: -1 })
     .lean();
   return expenses.map((expense) => ({
@@ -93,7 +94,8 @@ async function getExpenses(email, options = {}) {
     category: expense.category,
     categorySource: expense.categorySource || "fallback",
     aiSuggested: Boolean(expense.aiSuggested),
-    createdAt: expense.createdAt
+    createdAt: expense.createdAt,
+    date: expense.date || expense.createdAt
   }));
 }
 
@@ -101,10 +103,13 @@ function makeExpenseId() {
   return Date.now() * 1000 + Math.floor(Math.random() * 1000);
 }
 
-async function addExpense({ email, amount, description, category, categorySource, aiSuggested = false }) {
+async function addExpense({ email, amount, description, category, categorySource, aiSuggested = false, date }) {
   await ensureDatabase();
   const numericAmount = Number(amount);
   const normalizedEmail = normalizeEmail(email);
+
+  const expenseDate = date ? new Date(date) : new Date();
+  const validDate = isNaN(expenseDate.getTime()) ? new Date() : expenseDate;
 
   const expense = await Expense.create({
     id: makeExpenseId(),
@@ -113,7 +118,9 @@ async function addExpense({ email, amount, description, category, categorySource
     description: String(description).trim(),
     category: String(category),
     categorySource: categorySource || "fallback",
-    aiSuggested: Boolean(aiSuggested)
+    aiSuggested: Boolean(aiSuggested),
+    date: validDate,
+    createdAt: validDate
   });
 
   // Increment User.totalExpense
@@ -129,7 +136,8 @@ async function addExpense({ email, amount, description, category, categorySource
     category: expense.category,
     categorySource: expense.categorySource,
     aiSuggested: expense.aiSuggested,
-    createdAt: expense.createdAt
+    createdAt: expense.createdAt,
+    date: expense.date || expense.createdAt
   };
 }
 

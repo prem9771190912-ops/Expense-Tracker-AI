@@ -44,7 +44,7 @@ exports.getExpenses = async (req, res) => {
 };
 exports.createExpense = async (req, res) => {
   try {
-    const { amount, description, category, categorySource } = req.body;
+    const { amount, description, category, categorySource, date } = req.body;
     const email = req.user.email;
     const numericAmount = Number(amount);
 
@@ -86,6 +86,7 @@ exports.createExpense = async (req, res) => {
       category: String(finalCategory),
       categorySource: finalSource,
       aiSuggested,
+      date,
       userId: req.user?.id || null
     });
 

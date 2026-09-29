@@ -340,9 +340,21 @@ select option {
 /* Horizontal input bar in index.html */
 #trackerApp #form {
   display: grid;
-  grid-template-columns: 1fr 2fr 1.3fr auto;
+  grid-template-columns: 1fr 1.8fr 1.2fr 1.2fr auto;
   gap: 12px;
   align-items: center;
+}
+
+@media (max-width: 992px) {
+  #trackerApp #form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  #trackerApp #form {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Buttons */

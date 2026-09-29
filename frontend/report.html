@@ -36,8 +36,8 @@
     <header class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
       <div>
         <span class="eyebrow">Financial Analytics</span>
-        <h1>Premium Expense & Income Reports</h1>
-        <p class="subtitle">Complete breakdown of transactions, savings, yearly summary and notes.</p>
+        <h1>Premium Expense Reports</h1>
+        <p class="subtitle">Complete breakdown of transactions, period trends, and yearly summaries.</p>
       </div>
       <div>
         <!-- Feature 4: Download Report Button (CSV) -->
@@ -66,28 +66,20 @@
     </div>
 
     <div id="reportContent" style="display: none;">
-      <!-- Feature 3: Summary Cards (Total Income, Total Expense, Savings) -->
+      <!-- Feature 3: Summary Card (Total Expense) -->
       <div class="stats-row" style="margin-bottom: 24px;">
-        <div class="stat-card" style="border-left: 4px solid var(--emerald);">
-          <span class="stat-label">Total Income</span>
-          <span class="stat-value" id="summaryIncome" style="color: var(--emerald-text);">₹0.00</span>
-        </div>
         <div class="stat-card" style="border-left: 4px solid var(--rose);">
           <span class="stat-label">Total Expense</span>
           <span class="stat-value" id="summaryExpense" style="color: var(--rose-text);">₹0.00</span>
         </div>
-        <div class="stat-card" style="border-left: 4px solid var(--sky);">
-          <span class="stat-label">Savings</span>
-          <span class="stat-value" id="summarySavings" style="color: var(--sky);">₹0.00</span>
-        </div>
       </div>
 
-      <!-- Feature 3: Expense & Income Table -->
+      <!-- Feature 3: Expense Table -->
       <section class="panel" style="margin-bottom: 24px;">
         <div class="panel-heading">
           <div>
             <span class="eyebrow" id="tableFilterEyebrow">Daily Activity</span>
-            <h2>Expense & Income Table</h2>
+            <h2>Expense Breakdown</h2>
             <p class="subtitle" style="margin-bottom: 0;">Detailed transactions categorized for the selected period.</p>
           </div>
           <span class="ai-mark" id="tableRecordCount">0 Transactions</span>
@@ -99,18 +91,16 @@
               <tr>
                 <th style="width: 140px;">Date</th>
                 <th>Description</th>
-                <th style="width: 150px;">Category</th>
-                <th style="text-align: right; width: 140px;">Income (₹)</th>
-                <th style="text-align: right; width: 140px;">Expense (₹)</th>
+                <th style="width: 160px;">Category</th>
+                <th style="text-align: right; width: 160px;">Amount (₹)</th>
               </tr>
             </thead>
             <tbody id="expenseIncomeTableBody">
-              <tr><td colspan="5"><div class="empty-state">No transactions found for this period.</div></td></tr>
+              <tr><td colspan="4"><div class="empty-state">No transactions found for this period.</div></td></tr>
             </tbody>
             <tfoot id="expenseIncomeTableFoot">
               <tr style="font-weight: 700; background: rgba(255, 255, 255, 0.03); border-top: 2px solid var(--border-hover);">
-                <td colspan="3" style="text-align: right; padding-right: 18px;">Period Totals:</td>
-                <td id="footTotalIncome" style="text-align: right; color: var(--emerald-text); font-variant-numeric: tabular-nums;">₹0.00</td>
+                <td colspan="3" style="text-align: right; padding-right: 18px;">Period Total:</td>
                 <td id="footTotalExpense" style="text-align: right; color: var(--rose-text); font-variant-numeric: tabular-nums;">₹0.00</td>
               </tr>
             </tfoot>
@@ -124,7 +114,7 @@
           <div>
             <span class="eyebrow">Annual Financials</span>
             <h2 id="yearlyHeading">Yearly Summary (2026)</h2>
-            <p class="subtitle" style="margin-bottom: 0;">Month-by-month financial summary including income, expenses, and savings.</p>
+            <p class="subtitle" style="margin-bottom: 0;">Month-by-month financial expense summary.</p>
           </div>
           <span class="ai-mark">12 Months</span>
         </div>
@@ -134,43 +124,17 @@
             <thead>
               <tr>
                 <th>Month</th>
-                <th style="text-align: right;">Total Income (₹)</th>
                 <th style="text-align: right;">Total Expense (₹)</th>
-                <th style="text-align: right;">Savings (₹)</th>
               </tr>
             </thead>
             <tbody id="yearlyTableBody"></tbody>
             <tfoot>
               <tr style="font-weight: 700; background: rgba(255, 255, 255, 0.03); border-top: 2px solid var(--border-hover);">
                 <td>Total for Year:</td>
-                <td id="yearlyGrandIncome" style="text-align: right; color: var(--emerald-text); font-variant-numeric: tabular-nums;">₹0.00</td>
                 <td id="yearlyGrandExpense" style="text-align: right; color: var(--rose-text); font-variant-numeric: tabular-nums;">₹0.00</td>
-                <td id="yearlyGrandSavings" style="text-align: right; color: var(--sky); font-variant-numeric: tabular-nums;">₹0.00</td>
               </tr>
             </tfoot>
           </table>
-        </div>
-      </section>
-
-      <!-- Feature 3: Notes Section -->
-      <section class="panel" style="margin-bottom: 24px;">
-        <div class="panel-heading">
-          <div>
-            <span class="eyebrow">Observations</span>
-            <h2>Financial Notes</h2>
-            <p class="subtitle" style="margin-bottom: 0;">Record your financial goals, monthly reviews, or notes for this report.</p>
-          </div>
-          <span class="ai-mark">Saved Locally</span>
-        </div>
-
-        <div class="notes-container">
-          <textarea id="notesInput" class="notes-textarea" placeholder="Add your budget notes, reminders, or financial observations here..."></textarea>
-          <div class="notes-actions">
-            <button type="button" id="saveNotesBtn" class="btn" style="background: var(--emerald); color: white; padding: 10px 22px; font-weight: 600; border-radius: var(--radius-sm); border: none; cursor: pointer;">
-              💾 Save Notes
-            </button>
-            <span id="notesStatus" class="notes-status"></span>
-          </div>
         </div>
       </section>
     </div>

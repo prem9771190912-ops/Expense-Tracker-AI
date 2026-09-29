@@ -62,6 +62,20 @@
             </div>
         </header>
 
+        <!-- Prominent AI Spending Insight Section -->
+        <section id="aiInsightSection" class="panel" style="display: none; margin-bottom: 24px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(30, 41, 59, 0.4) 100%); border: 1px solid rgba(245, 158, 11, 0.35); border-left: 4px solid var(--amber);">
+            <div class="panel-heading" style="margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="eyebrow" style="color: #f59e0b; margin-bottom: 0;">✨ AI Financial Intelligence</span>
+                    <span class="ai-mark" style="background: rgba(245, 158, 11, 0.18); color: #fde68a; border-color: rgba(245, 158, 11, 0.4);">Instant Spending Advisor</span>
+                </div>
+                <button type="button" id="closeInsightBtn" class="btn secondary-btn" style="padding: 4px 10px; font-size: 0.85rem; border-radius: 6px; cursor: pointer;">✕ Close</button>
+            </div>
+            <div id="aiInsightCardBody" style="font-size: 1rem; line-height: 1.6; color: #fde68a; padding: 4px 0;">
+                <!-- AI Insight content will appear here -->
+            </div>
+        </section>
+
         <!-- Feature 2: Premium Leaderboard Section (Visible on Dashboard) -->
         <section id="leaderboardSection" class="panel leaderboard-panel" style="margin-bottom: 24px;">
             <div class="panel-heading">
@@ -123,9 +137,9 @@
                     <option value="Entertainment">Entertainment</option>
                     <option value="Health">Health</option>
                     <option value="Education">Education</option>
-                    <option value="Salary">Salary</option>
                     <option value="Other">Other</option>
                 </select>
+                <input id="expenseDate" type="date" title="Expense Date" required>
                 <button type="submit">+ Add Expense</button>
                 <div id="aiSuggestion" class="ai-suggestion" style="display: none; grid-column: 1 / -1; margin-top: 8px;"></div>
             </form>

@@ -10,6 +10,20 @@ const amount = document.getElementById("amount");
 const description = document.getElementById("description");
 const category = document.getElementById("category");
 const aiSuggestion = document.getElementById("aiSuggestion");
+const expenseDate = document.getElementById("expenseDate");
+const aiInsightSection = document.getElementById("aiInsightSection");
+const aiInsightCardBody = document.getElementById("aiInsightCardBody");
+const closeInsightBtn = document.getElementById("closeInsightBtn");
+
+if (expenseDate && !expenseDate.value) {
+  expenseDate.value = new Date().toISOString().slice(0, 10);
+}
+
+if (closeInsightBtn && aiInsightSection) {
+  closeInsightBtn.addEventListener("click", () => {
+    aiInsightSection.style.display = "none";
+  });
+}
 
 // Premium & Leaderboard DOM Elements
 const premiumHeadline = document.getElementById("premiumHeadline");
@@ -284,7 +298,7 @@ function renderExpenseItem(x) {
   d.dataset.expenseId = String(x.id);
   d.dataset.amount = String(Number(x.amount) || 0);
   const cat = esc(x.category || "General");
-  const dateStr = new Date(x.createdAt || Date.now()).toLocaleDateString();
+  const dateStr = new Date(x.date || x.createdAt || Date.now()).toLocaleDateString();
   const isAi = x.aiSuggested || (x.categorySource && x.categorySource !== "saved" && x.categorySource !== "fallback");
 
   d.innerHTML = `
@@ -569,7 +583,8 @@ if (form) {
       description: textDescription,
       category: targetCat,
       categorySource: targetSource,
-      aiSuggested: targetSource === "ai"
+      aiSuggested: targetSource === "ai",
+      date: (expenseDate && expenseDate.value) ? expenseDate.value : undefined
     };
 
     try {
@@ -584,6 +599,9 @@ if (form) {
       userManuallyChangedCategory = false;
       currentAiCategory = "";
       if (category) category.value = "";
+      if (expenseDate) {
+        expenseDate.value = new Date().toISOString().slice(0, 10);
+      }
       if (aiSuggestion) {
         aiSuggestion.style.display = "none";
         aiSuggestion.innerHTML = "";
@@ -624,14 +642,54 @@ window.del = del;
 
 if (insightBtn) {
   insightBtn.onclick = async () => {
-    if (!insight) return;
-    insight.innerHTML = '<div class="insight">Analyzing spending...</div>';
+    const originalBtnHtml = insightBtn.innerHTML;
+    insightBtn.disabled = true;
+    insightBtn.innerHTML = '<span>⏳ Analyzing spending...</span>';
+
+    if (aiInsightSection && aiInsightCardBody) {
+      aiInsightSection.style.display = "block";
+      aiInsightCardBody.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; color: #fde68a;">
+          <span style="font-size: 1.25rem;">✦</span>
+          <span>Analyzing your spending habits across all categories...</span>
+        </div>
+      `;
+      aiInsightSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    if (insight) {
+      insight.innerHTML = '<div class="insight">✨ Analyzing spending patterns...</div>';
+    }
+
     try {
       const queryEmail = currentUser?.email ? `?email=${encodeURIComponent(currentUser.email)}` : "";
       const x = await request("/api/ai/insight" + queryEmail, { headers: authHeaders() });
-      insight.innerHTML = `<div class="insight">✨ ${esc(x.insight || x.message)}</div>`;
+      const insightText = x.insight || x.message || "Keep tracking your expenses to unlock more insights!";
+
+      if (aiInsightCardBody) {
+        aiInsightCardBody.innerHTML = `
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <span style="font-size: 1.6rem; line-height: 1;">💡</span>
+            <div>
+              <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px; font-size: 1.02rem;">Smart Financial Takeaway:</div>
+              <div style="color: #fde68a; font-size: 0.98rem; line-height: 1.6;">${esc(insightText)}</div>
+            </div>
+          </div>
+        `;
+      }
+      if (insight) {
+        insight.innerHTML = `<div class="insight">✨ ${esc(insightText)}</div>`;
+      }
     } catch (error) {
-      insight.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
+      const errorMsg = error.message || "Could not generate insight. Please try again.";
+      if (aiInsightCardBody) {
+        aiInsightCardBody.innerHTML = `<div class="empty-state" style="color: var(--rose-text); margin: 0;">${esc(errorMsg)}</div>`;
+      }
+      if (insight) {
+        insight.innerHTML = `<div class="empty-state">${esc(errorMsg)}</div>`;
+      }
+    } finally {
+      insightBtn.disabled = false;
+      insightBtn.innerHTML = originalBtnHtml;
     }
   };
 }

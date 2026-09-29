@@ -31,6 +31,10 @@ const expenseSchema = new mongoose.Schema({
   aiSuggested: {
     type: Boolean,
     default: false
+  },
+  date: {
+    type: Date,
+    default: Date.now
   }
 }, { timestamps: true });
 
