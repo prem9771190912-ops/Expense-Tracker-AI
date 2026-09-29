@@ -10,7 +10,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'demo_jwt_secret_key_change_in_prod
 function generateToken(user) {
   if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required.");
   return jwt.sign(
-    { id: user.id || user._id || user.email, email: user.email, name: user.name || "User" },
+    {
+      id: user.id || user._id || user.email,
+      userId: user.id || user._id || user.email,
+      email: user.email,
+      name: user.name || "User",
+      ispremiumuser: Boolean(user.ispremiumuser ?? user.isPremium)
+    },
     JWT_SECRET,
     { expiresIn: "30d" }
   );
@@ -55,7 +61,14 @@ exports.register = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Account created successfully.",
-      user: { id: user.id, name: user.name, email: user.email },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        isPremium: Boolean(user.ispremiumuser ?? user.isPremium),
+        ispremiumuser: Boolean(user.ispremiumuser ?? user.isPremium),
+        totalExpense: Number(user.totalExpense || 0)
+      },
       token
     });
   } catch (error) {
@@ -93,10 +106,18 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken(user);
+    const isPremium = Boolean(user.ispremiumuser ?? user.isPremium);
     return res.status(200).json({
       success: true,
       message: "Login successful.",
-      user: { id: user.id, name: user.name, email: user.email, isPremium: !!user.isPremium },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        isPremium: isPremium,
+        ispremiumuser: isPremium,
+        totalExpense: Number(user.totalExpense || 0)
+      },
       token
     });
   } catch (error) {
@@ -184,7 +205,20 @@ exports.me = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Not authenticated" });
     }
-    return res.json({ success: true, user: { id: req.user.id, name: req.user.name, email: req.user.email, isPremium: req.user.isPremium } });
+    const isPremium = Boolean(req.user.ispremiumuser ?? req.user.isPremium);
+    const token = generateToken(req.user);
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: req.user.id,
+        name: req.user.name,
+        email: req.user.email,
+        isPremium: isPremium,
+        ispremiumuser: isPremium,
+        totalExpense: Number(req.user.totalExpense || 0)
+      }
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Internal server error." });
   }

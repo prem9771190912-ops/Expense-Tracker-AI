@@ -20,6 +20,14 @@ const userSchema = new mongoose.Schema({
   isPremium: {
     type: Boolean,
     default: false
+  },
+  ispremiumuser: {
+    type: Boolean,
+    default: false
+  },
+  totalExpense: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 

@@ -7,6 +7,8 @@
     <title>Smart Hub — SpendWise AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="style.css">
+    <!-- Cashfree Payment Gateway JavaScript SDK v3 -->
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 </head>
 
 <body>
@@ -20,8 +22,6 @@
             
             <div class="nav-menu">
                 <a href="index.html" class="nav-item active">⚡ Smart Hub</a>
-                <a href="react.html" class="nav-item">⚛️ React App</a>
-                <a href="expenses.html" class="nav-item">📋 Activity Log</a>
                 <a href="report.html" class="nav-item">📊 Reports</a>
             </div>
 
@@ -32,6 +32,11 @@
     </nav>
 
     <main id="trackerApp">
+        <!-- Feature 1: Headline at the top for Premium Users -->
+        <div id="premiumHeadline" class="premium-headline" style="display: none;">
+            🎉 You are a Premium User Now
+        </div>
+
         <header class="app-header">
             <div>
                 <span class="eyebrow">Financial Dashboard</span>
@@ -39,12 +44,63 @@
                 <p class="subtitle">Quickly log transactions with instant AI categorization and paginated ledger.</p>
             </div>
             <div class="header-actions">
+                <!-- Cashfree Premium Membership Feature -->
+                <button type="button" id="buyPremiumBtn" class="btn buy-premium-btn" title="Buy Premium Membership">
+                    ⭐ Buy Premium Membership
+                </button>
+                <div id="premiumUserBadge" class="premium-user-badge" style="display: none;">
+                    👑 Premium User
+                </div>
+
+                <button type="button" id="leaderboardBtn" class="btn" style="display: none; background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(202, 138, 4, 0.3) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4);">
+                    🏆 Show Leaderboard
+                </button>
+                <a href="report.html" class="btn" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); text-decoration: none;">📊 Reports</a>
                 <button type="button" id="insightBtn" class="btn" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.35) 100%); color: var(--amber-text); border: 1px solid rgba(245, 158, 11, 0.4);">
                     ✨ AI Spending Insight
                 </button>
-                <a href="react.html" class="btn secondary-btn" style="text-decoration: none;">⚛️ Open React App</a>
             </div>
         </header>
+
+        <!-- Feature 2: Premium Leaderboard Section (Visible on Dashboard) -->
+        <section id="leaderboardSection" class="panel leaderboard-panel" style="margin-bottom: 24px;">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow" style="color: #fde047;">🏆 Live Leaderboard</span>
+                    <h2>Leaderboard — Top Contributors</h2>
+                    <p class="subtitle" style="margin-bottom: 0;">Live financial standings ranked by cumulative expenditure. The leading contributor is automatically awarded 👑 <b>Premium Tier Status</b>.</p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" id="refreshLeaderboardBtn" class="btn secondary-btn" style="padding: 6px 14px; font-size: 0.85rem; cursor: pointer;">🔄 Refresh</button>
+                    <span class="ai-mark" style="background: rgba(234, 179, 8, 0.15); color: #fde047; border-color: rgba(234, 179, 8, 0.3);">👑 Rank Leader • Premium Tier</span>
+                </div>
+            </div>
+
+            <!-- Top Spender Highlight Banner -->
+            <div id="topSpenderBanner" style="margin-top: 14px; padding: 12px 18px; border-radius: 10px; background: linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(202, 138, 4, 0.2) 100%); border: 1px solid rgba(234, 179, 8, 0.4); color: #fde047; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.25rem;">👑</span>
+                    <span><b>Current Rank Leader & Premium Member:</b> <strong id="topSpenderName" style="color: #ffffff; margin-left: 4px;">Loading...</strong></span>
+                </div>
+                <span id="topSpenderAmount" style="font-weight: 800; color: #6ee7b7; font-size: 1.05rem;">₹0.00</span>
+            </div>
+
+            <div class="table-wrap" style="margin-top: 14px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Rank</th>
+                            <th>User Name</th>
+                            <th style="width: 220px; text-align: center;">Membership Status</th>
+                            <th style="text-align: right;">Total Expense</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardTableBody">
+                        <tr><td colspan="4"><div class="empty-state">Loading leaderboard...</div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
         <!-- Add Expense -->
         <section class="card">
@@ -81,33 +137,102 @@
             <div class="head">
                 <div>
                     <h2>Expenses</h2>
-                    <span class="subtitle" style="margin-bottom: 0;">Showing 10 expenses per page</span>
+                    <span id="pageSubtitle" class="subtitle" style="margin-bottom: 0;">Showing 10 expenses per page</span>
                 </div>
                 <b id="total">Total: ₹0.00</b>
             </div>
+
+            <!-- Feature 7: Dynamic Expenses Per Page Dropdown -->
+            <div class="table-controls-bar">
+                <div class="expenses-per-page-wrap">
+                    <label for="limitSelect">Show:</label>
+                    <select id="limitSelect" class="limit-select">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="40">40</option>
+                    </select>
+                    <span>expenses</span>
+                </div>
+            </div>
+
             <div id="insight"></div>
             <div id="list"></div>
 
-            <!-- Pagination Controls (10 items per page) -->
+            <!-- Feature 6: Frontend Pagination (Previous 1 2 3 4 5 Next) -->
             <div id="paginationContainer" class="pagination-wrap" style="display: none;">
                 <div class="pagination-info" id="paginationInfo">
                     Showing <b id="pageStart">0</b>–<b id="pageEnd">0</b> of <b id="totalItems">0</b> expenses
                     <span class="pagination-badge" id="pageBadge">Page 1 of 1</span>
                 </div>
                 <div class="pagination-controls">
-                    <button type="button" id="firstPageBtn" class="pagination-btn" title="Go to First Page">⏮ First</button>
-                    <button type="button" id="prevPageBtn" class="pagination-btn" title="Go to Previous Page">◀ Prev</button>
+                    <button type="button" id="prevPageBtn" class="pagination-btn" title="Go to Previous Page">Previous</button>
                     <div id="paginationNumbers" class="pagination-numbers"></div>
-                    <button type="button" id="nextPageBtn" class="pagination-btn" title="Go to Next Page">Next ▶</button>
-                    <button type="button" id="lastPageBtn" class="pagination-btn last-page-highlight" title="Go to Last Page">
-                        ⏭ Last (<span id="lastPageNumberDisplay">1</span>)
-                    </button>
+                    <button type="button" id="nextPageBtn" class="pagination-btn" title="Go to Next Page">Next</button>
                 </div>
             </div>
         </section>
     </main>
 
-    <script type="module" src="script.js"></script>
+    <!-- Cashfree Sandbox Checkout Modal -->
+    <div id="cashfreeModal" class="cf-modal-overlay" style="display: none;">
+        <div class="cf-modal-box">
+            <div class="cf-modal-header">
+                <div class="cf-brand">
+                    <span class="cf-brand-logo">cashfree</span>
+                    <span class="cf-badge-sandbox">SANDBOX TEST</span>
+                </div>
+                <button type="button" id="closeCfModalBtn" class="cf-close-btn" title="Cancel">&times;</button>
+            </div>
+            
+            <div class="cf-order-summary">
+                <div>
+                    <span class="cf-summary-label">Paying For</span>
+                    <strong class="cf-merchant-name">SpendWise AI — Premium Membership</strong>
+                    <span id="cfModalOrderId" class="cf-order-id">Order ID: order_...</span>
+                </div>
+                <div class="cf-amount-badge">
+                    <span class="cf-amount-currency">₹</span>
+                    <span class="cf-amount-num">199.00</span>
+                </div>
+            </div>
+
+            <div class="cf-methods-wrap">
+                <div class="cf-methods-tabs">
+                    <button type="button" class="cf-tab active" data-tab="upi">⚡ Instant UPI</button>
+                    <button type="button" class="cf-tab" data-tab="card">💳 Card</button>
+                    <button type="button" class="cf-tab" data-tab="netbanking">🏦 Net Banking</button>
+                </div>
+                
+                <div class="cf-tab-content">
+                    <div id="cfTabUpi" class="cf-tab-pane">
+                        <div class="cf-upi-options">
+                            <label class="cf-upi-option">
+                                <input type="radio" name="cfUpiApp" checked>
+                                <span>UPI App (Google Pay / PhonePe / Paytm)</span>
+                            </label>
+                            <input type="text" class="cf-input" value="success@cashfree" readonly style="margin-top: 8px; opacity: 0.85;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cf-actions">
+                <button type="button" id="cfPaySuccessBtn" class="cf-btn-pay">
+                    🔒 Pay ₹199.00 (Simulate Success)
+                </button>
+                <button type="button" id="cfPayFailBtn" class="cf-btn-cancel">
+                    ✕ Cancel Payment (Simulate Failure)
+                </button>
+            </div>
+
+            <div class="cf-footer-note">
+                🛡️ Cashfree Sandbox Gateway Simulation — 256-Bit Encrypted
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js?v=2.3"></script>
 </body>
 
 </html>

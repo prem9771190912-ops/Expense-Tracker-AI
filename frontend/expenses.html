@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Activity Log — SpendWise AI</title>
+  <title>SpendWise AI</title>
   <link rel="stylesheet" href="css/style.css">
+  <script>window.location.replace("index.html");</script>
 </head>
 <body>
   <!-- Top Navigation -->
@@ -17,7 +18,6 @@
       
       <div class="nav-menu">
         <a href="index.html" class="nav-item">⚡ Smart Hub</a>
-        <a href="react.html" class="nav-item">⚛️ React App</a>
         <a href="expenses.html" class="nav-item active">📋 Activity Log</a>
         <a href="report.html" class="nav-item">📊 Reports</a>
       </div>
@@ -29,14 +29,23 @@
   </nav>
 
   <main class="dashboard">
+    <!-- Feature 1: Headline at the top for Premium Users -->
+    <div id="premiumHeadline" class="premium-headline" style="display: none;">
+      🎉 You are a Premium User Now
+    </div>
+
     <!-- Page Header -->
     <header class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
       <div>
         <span class="eyebrow">Real-Time Ledger</span>
         <h1>Detailed Expense Activity</h1>
-        <p class="subtitle">Every transaction logged with instant AI intelligence, classified and paginated (10 per page).</p>
+        <p id="pageSubtitle" class="subtitle">Every transaction logged with instant AI intelligence and paginated ledger.</p>
       </div>
-      <div>
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <button type="button" id="leaderboardBtn" class="btn" style="display: none; background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(202, 138, 4, 0.3) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); padding: 10px 18px; border-radius: var(--radius-sm); font-weight: 600;">
+          🏆 Show Leaderboard
+        </button>
+        <a href="report.html" class="btn" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm); font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">📊 Reports</a>
         <button type="button" id="insightBtn" class="btn" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.35) 100%); color: var(--amber-text); border: 1px solid rgba(245, 158, 11, 0.4); padding: 10px 18px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
           ✨ AI Spending Insight
         </button>
@@ -44,6 +53,46 @@
     </header>
 
     <div id="insightContainer" style="display: none; margin-bottom: 24px;"></div>
+
+    <!-- Feature 2: Premium Leaderboard Section (Visible on Activity Log) -->
+    <section id="leaderboardSection" class="panel leaderboard-panel" style="margin-bottom: 24px;">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow" style="color: #fde047;">🏆 Live Leaderboard</span>
+          <h2>Leaderboard — Top Contributors</h2>
+          <p class="subtitle" style="margin-bottom: 0;">Live financial standings ranked by cumulative expenditure. The leading contributor is automatically awarded 👑 <b>Premium Tier Status</b>.</p>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" id="refreshLeaderboardBtn" class="btn secondary-btn" style="padding: 6px 14px; font-size: 0.85rem; cursor: pointer;">🔄 Refresh</button>
+          <span class="ai-mark" style="background: rgba(234, 179, 8, 0.15); color: #fde047; border-color: rgba(234, 179, 8, 0.3);">👑 Rank Leader • Premium Tier</span>
+        </div>
+      </div>
+
+      <!-- Top Spender Highlight Banner -->
+      <div id="topSpenderBanner" style="margin-top: 14px; padding: 12px 18px; border-radius: 10px; background: linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(202, 138, 4, 0.2) 100%); border: 1px solid rgba(234, 179, 8, 0.4); color: #fde047; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.25rem;">👑</span>
+          <span><b>Current Rank Leader & Premium Member:</b> <strong id="topSpenderName" style="color: #ffffff; margin-left: 4px;">Loading...</strong></span>
+        </div>
+        <span id="topSpenderAmount" style="font-weight: 800; color: #6ee7b7; font-size: 1.05rem;">₹0.00</span>
+      </div>
+
+      <div class="table-wrap" style="margin-top: 14px;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 80px;">Rank</th>
+              <th>User Name</th>
+              <th style="width: 220px; text-align: center;">Membership Status</th>
+              <th style="text-align: right;">Total Expense</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardTableBody">
+            <tr><td colspan="4"><div class="empty-state">Loading leaderboard...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <!-- Top Grid: Add Form + Total Card -->
     <section class="dashboard-grid">
@@ -107,6 +156,20 @@
         </div>
       </div>
 
+      <!-- Feature 7: Dynamic Expenses Per Page Dropdown -->
+      <div class="table-controls-bar">
+        <div class="expenses-per-page-wrap">
+          <label for="limitSelect">Show:</label>
+          <select id="limitSelect" class="limit-select">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="40">40</option>
+          </select>
+          <span>expenses</span>
+        </div>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -122,20 +185,16 @@
         </table>
       </div>
 
-      <!-- Pagination Controls (10 items per page) -->
+      <!-- Feature 6: Frontend Pagination (Previous  1  2  3  4  5  Next) -->
       <div id="paginationContainer" class="pagination-wrap" style="display: none;">
         <div class="pagination-info" id="paginationInfo">
           Showing <b id="pageStart">0</b>–<b id="pageEnd">0</b> of <b id="totalItems">0</b> expenses
           <span class="pagination-badge" id="pageBadge">Page 1 of 1</span>
         </div>
         <div class="pagination-controls">
-          <button type="button" id="firstPageBtn" class="pagination-btn" title="Go to First Page">⏮ First</button>
-          <button type="button" id="prevPageBtn" class="pagination-btn" title="Go to Previous Page">◀ Prev</button>
+          <button type="button" id="prevPageBtn" class="pagination-btn" title="Go to Previous Page">Previous</button>
           <div id="paginationNumbers" class="pagination-numbers"></div>
-          <button type="button" id="nextPageBtn" class="pagination-btn" title="Go to Next Page">Next ▶</button>
-          <button type="button" id="lastPageBtn" class="pagination-btn last-page-highlight" title="Go to Last Page">
-            ⏭ Last (<span id="lastPageNumberDisplay">1</span>)
-          </button>
+          <button type="button" id="nextPageBtn" class="pagination-btn" title="Go to Next Page">Next</button>
         </div>
       </div>
     </section>

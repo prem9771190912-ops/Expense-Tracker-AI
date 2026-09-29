@@ -22,10 +22,9 @@ exports.getExpenses = async (req, res) => {
     const page = req.query.page;
     const limit = req.query.limit;
 
-    if (page != null) {
+    if (page != null || limit != null) {
       const result = await db.getExpenses(email, { page, limit });
       return res.json({
-        success: true,
         ...result
       });
     }
@@ -117,14 +116,64 @@ exports.deleteExpense = async (req, res) => {
 
 exports.getLeaderboard = async (req, res) => {
   try {
-    const leaderboard = await db.getLeaderboard(req.user.email);
-    return res.json({ success: true, leaderboard });
+    // Retrieve strictly the 3 IDs: prem9771190912, pk, prem123
+    const allUsers = await db.getLeaderboard({});
+
+    // Assign genuine ranks 1, 2, 3
+    const rankedUsers = allUsers.slice(0, 3).map((u, idx) => ({
+      ...u,
+      rank: idx + 1
+    }));
+
+    return res.json({ success: true, leaderboard: rankedUsers });
   } catch (error) {
     console.error("getLeaderboard error:", error.message);
     if (db.isDatabaseError(error)) {
       return res.status(503).json({ success: false, message: "Database temporarily unavailable." });
     }
     return res.status(500).json({ success: false, message: "Unable to load leaderboard." });
+  }
+};
+
+exports.downloadReport = async (req, res) => {
+  try {
+    const currentEmail = req.user?.email?.trim().toLowerCase();
+    const currentId = String(req.user?.id || req.user?._id || "");
+
+    const allUsers = await db.getLeaderboard({});
+    const topUser = allUsers[0];
+    const maxExpense = Number(topUser?.totalExpense || 0);
+
+    const isTopSpender = Boolean(
+      topUser &&
+      ((currentEmail && String(topUser.email || "").toLowerCase() === currentEmail) ||
+       (currentId && String(topUser.id) === currentId)) &&
+      maxExpense > 0
+    );
+
+    const hasAccess = Boolean(req.user?.isPremium || req.user?.ispremiumuser || isTopSpender);
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: "Access Denied: Report export is an exclusive feature reserved for Premium Members and the Rank #1 Leaderboard contributor."
+      });
+    }
+
+    const expenses = await db.getExpenses(currentEmail);
+    return res.json({
+      success: true,
+      message: "Report file generated successfully.",
+      user: {
+        name: req.user.name,
+        email: currentEmail,
+        totalExpense: req.user.totalExpense
+      },
+      expenses
+    });
+  } catch (error) {
+    console.error("downloadReport error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

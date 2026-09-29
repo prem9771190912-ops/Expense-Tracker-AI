@@ -6,6 +6,208 @@ const PasswordResetToken = require("../models/PasswordResetToken");
 
 async function ensureDatabase() {
   await connectDB();
+  if (!ensureDatabase.synced) {
+    ensureDatabase.synced = true;
+    try {
+      const usersToSync = await User.find({
+        $or: [{ totalExpense: { $exists: false } }, { totalExpense: null }]
+      }).lean();
+      for (const u of usersToSync) {
+        const agg = await Expense.aggregate([
+          { $match: { email: u.email } },
+          { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+        const total = agg[0]?.total || 0;
+        await User.updateOne({ _id: u._id }, { $set: { totalExpense: total } });
+      }
+    } catch (e) {
+      // Non-fatal
+    }
+  }
+}
+
+async function getExpenses(email, options = {}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeEmail(email);
+
+  if (options.page != null || options.limit != null) {
+    const page = Math.max(1, parseInt(options.page, 10) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(options.limit, 10) || 10));
+    const offset = (page - 1) * limit;
+
+    const totalItems = await Expense.countDocuments({ email: normalizedEmail });
+    const lastPage = Math.max(1, Math.ceil(totalItems / limit));
+    const currentPage = Math.min(page, lastPage);
+    const skip = (currentPage - 1) * limit;
+
+    const expenses = await Expense.find({ email: normalizedEmail })
+      .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1 })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalAggregation = await Expense.aggregate([
+      { $match: { email: normalizedEmail } },
+      { $group: { _id: null, totalAmount: { $sum: "$amount" } } }
+    ]);
+    const totalAmount = totalAggregation[0]?.totalAmount || 0;
+
+    const hasNextPage = currentPage < lastPage;
+    const nextPage = hasNextPage ? currentPage + 1 : 0;
+    const hasPreviousPage = currentPage > 1;
+    const previousPage = hasPreviousPage ? currentPage - 1 : 0;
+
+    return {
+      expenses: expenses.map((expense) => ({
+        id: expense.id,
+        amount: expense.amount,
+        description: expense.description,
+        category: expense.category,
+        categorySource: expense.categorySource || "fallback",
+        aiSuggested: Boolean(expense.aiSuggested),
+        createdAt: expense.createdAt
+      })),
+      currentPage,
+      hasNextPage,
+      nextPage,
+      hasPreviousPage,
+      previousPage,
+      lastPage,
+      totalItems,
+      totalExpenses: totalItems,
+      totalPages: lastPage,
+      limit,
+      totalAmount
+    };
+  }
+
+  const expenses = await Expense.find({ email: normalizedEmail })
+    .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1 })
+    .sort({ createdAt: -1 })
+    .lean();
+  return expenses.map((expense) => ({
+    id: expense.id,
+    amount: expense.amount,
+    description: expense.description,
+    category: expense.category,
+    categorySource: expense.categorySource || "fallback",
+    aiSuggested: Boolean(expense.aiSuggested),
+    createdAt: expense.createdAt
+  }));
+}
+
+function makeExpenseId() {
+  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+}
+
+async function addExpense({ email, amount, description, category, categorySource, aiSuggested = false }) {
+  await ensureDatabase();
+  const numericAmount = Number(amount);
+  const normalizedEmail = normalizeEmail(email);
+
+  const expense = await Expense.create({
+    id: makeExpenseId(),
+    email: normalizedEmail,
+    amount: numericAmount,
+    description: String(description).trim(),
+    category: String(category),
+    categorySource: categorySource || "fallback",
+    aiSuggested: Boolean(aiSuggested)
+  });
+
+  // Increment User.totalExpense
+  await User.updateOne(
+    { email: normalizedEmail },
+    { $inc: { totalExpense: numericAmount } }
+  );
+
+  return {
+    id: expense.id,
+    amount: expense.amount,
+    description: expense.description,
+    category: expense.category,
+    categorySource: expense.categorySource,
+    aiSuggested: expense.aiSuggested,
+    createdAt: expense.createdAt
+  };
+}
+
+async function deleteExpense(email, expenseId) {
+  await ensureDatabase();
+  const id = String(expenseId || "").trim();
+  const emailFilter = normalizeEmail(email);
+  const conditions = [{ email: emailFilter, id }];
+  if (/^\d+$/.test(id)) conditions.push({ email: emailFilter, id: Number(id) });
+  if (/^[a-fA-F0-9]{24}$/.test(id)) conditions.push({ email: emailFilter, _id: id });
+
+  const expense = await Expense.findOne({ $or: conditions }).lean();
+  if (!expense) {
+    const error = new Error("Expense not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const result = await Expense.deleteOne({ _id: expense._id });
+  if (!result.deletedCount) {
+    const error = new Error("Expense not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Decrement User.totalExpense
+  if (expense.amount) {
+    await User.updateOne(
+      { email: emailFilter },
+      { $inc: { totalExpense: -Math.abs(Number(expense.amount)) } }
+    );
+  }
+
+  return true;
+}
+
+function isHiddenLeaderboardName(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized.startsWith("prem");
+}
+
+async function getLeaderboard(options = {}) {
+  await ensureDatabase();
+  const users = await User.find({})
+    .select("_id name email totalExpense")
+    .sort({ totalExpense: -1 })
+    .lean();
+
+  // Exclude automated test accounts (@example.com)
+  let list = users.filter((u) => !String(u.email || "").toLowerCase().includes("@example.com"));
+
+  // Sirf yeh 3 ID: prem9771190912, pk, prem123
+  const allowedEmails = [
+    "prem9771190912@gmail.com",
+    "prem5949@gmail.com",
+    "prem123@gmail.com"
+  ];
+  const allowedNames = [
+    "prem9771190912",
+    "pk",
+    "prem123"
+  ];
+
+  list = list.filter((user) => {
+    const email = String(user.email || "").toLowerCase();
+    const name = String(user.name || "").toLowerCase();
+    return allowedEmails.includes(email) || allowedNames.includes(name);
+  });
+
+  list.sort((a, b) => Number(b.totalExpense || 0) - Number(a.totalExpense || 0));
+  list = list.slice(0, 3);
+
+  return list.map((user) => ({
+    id: String(user._id),
+    name: user.name || "User",
+    email: user.email || "",
+    totalExpense: Number(user.totalExpense || 0)
+  }));
 }
 
 function isDatabaseError(error) {
@@ -29,32 +231,51 @@ function normalizeEmail(email) {
 
 async function getUser(email) {
   await ensureDatabase();
-  const user = await User.findOne({ email: normalizeEmail(email) }).lean();
-  return user
-    ? {
-        id: String(user._id),
-        name: user.name || "User",
-        password: user.password,
-        email: user.email,
-        isPremium: Boolean(user.isPremium)
-      }
-    : null;
+  const normalized = normalizeEmail(email);
+  const user = await User.findOne({ email: normalized }).lean();
+  if (!user) return null;
+
+  // The user whose expense is highest (top spender) among Prem / real users is the Premium User!
+  const realUsers = await User.find({ email: { $not: /@example\.com$/ } }).sort({ totalExpense: -1 }).lean();
+  const topUser = realUsers[0];
+  const isTopSpender = Boolean(
+    topUser &&
+    normalizeEmail(topUser.email) === normalized &&
+    (topUser.totalExpense || 0) > 0
+  );
+  // Genuine Premium User: Only true when the user has purchased premium membership
+  const isPremium = Boolean(user.isPremium || user.ispremiumuser);
+
+  return {
+    id: String(user._id),
+    name: user.name || "User",
+    password: user.password,
+    email: user.email,
+    isPremium: isPremium,
+    ispremiumuser: isPremium,
+    isTopSpender: isTopSpender,
+    totalExpense: Number(user.totalExpense || 0)
+  };
 }
 
-async function createUser({ name, email, password, isPremium = false }) {
+async function createUser({ name, email, password, isPremium = false, ispremiumuser = false, totalExpense = 0 }) {
   await ensureDatabase();
   try {
     const user = await User.create({
       email: normalizeEmail(email),
       name: String(name || "").trim() || "User",
       password,
-      isPremium
+      isPremium: Boolean(ispremiumuser || isPremium),
+      ispremiumuser: Boolean(ispremiumuser || isPremium),
+      totalExpense: Number(totalExpense || 0)
     });
     return {
       id: String(user._id),
       name: user.name,
       email: user.email,
-      isPremium: Boolean(user.isPremium)
+      isPremium: Boolean(user.ispremiumuser || user.isPremium),
+      ispremiumuser: Boolean(user.ispremiumuser || user.isPremium),
+      totalExpense: Number(user.totalExpense || 0)
     };
   } catch (error) {
     if (error?.code === 11000) {
@@ -85,181 +306,7 @@ async function updateUserPassword(email, hashedPassword) {
   return true;
 }
 
-async function getExpenses(email, options = {}) {
-  await ensureDatabase();
-  const normalizedEmail = normalizeEmail(email);
 
-  if (options.page != null) {
-    const page = Math.max(1, parseInt(options.page, 10) || 1);
-    const limit = Math.max(1, Math.min(100, parseInt(options.limit, 10) || 10));
-    const totalExpenses = await Expense.countDocuments({ email: normalizedEmail });
-    const totalPages = Math.max(1, Math.ceil(totalExpenses / limit));
-    const currentPage = Math.min(page, totalPages);
-    const skip = (currentPage - 1) * limit;
-
-    const expenses = await Expense.find({ email: normalizedEmail })
-      .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1 })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    const totalAggregation = await Expense.aggregate([
-      { $match: { email: normalizedEmail } },
-      { $group: { _id: null, totalAmount: { $sum: "$amount" } } }
-    ]);
-    const totalAmount = totalAggregation[0]?.totalAmount || 0;
-
-    return {
-      expenses: expenses.map((expense) => ({
-        id: expense.id,
-        amount: expense.amount,
-        description: expense.description,
-        category: expense.category,
-        categorySource: expense.categorySource || "fallback",
-        aiSuggested: Boolean(expense.aiSuggested),
-        createdAt: expense.createdAt
-      })),
-      totalExpenses,
-      totalPages,
-      currentPage,
-      lastPage: totalPages,
-      hasNextPage: currentPage < totalPages,
-      nextPage: currentPage < totalPages ? currentPage + 1 : null,
-      hasPreviousPage: currentPage > 1,
-      previousPage: currentPage > 1 ? currentPage - 1 : null,
-      limit,
-      totalAmount
-    };
-  }
-
-  const expenses = await Expense.find({ email: normalizedEmail })
-    .select({ _id: 0, id: 1, amount: 1, description: 1, category: 1, categorySource: 1, aiSuggested: 1, createdAt: 1 })
-    .sort({ createdAt: -1 })
-    .lean();
-  return expenses.map((expense) => ({
-    id: expense.id,
-    amount: expense.amount,
-    description: expense.description,
-    category: expense.category,
-    categorySource: expense.categorySource || "fallback",
-    aiSuggested: Boolean(expense.aiSuggested),
-    createdAt: expense.createdAt
-  }));
-}
-
-function makeExpenseId() {
-  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
-}
-
-async function addExpense({ email, amount, description, category, categorySource, aiSuggested = false }) {
-  await ensureDatabase();
-  const expense = await Expense.create({
-    id: makeExpenseId(),
-    email: normalizeEmail(email),
-    amount: Number(amount),
-    description: String(description).trim(),
-    category: String(category),
-    categorySource: categorySource || "fallback",
-    aiSuggested: Boolean(aiSuggested)
-  });
-  return {
-    id: expense.id,
-    amount: expense.amount,
-    description: expense.description,
-    category: expense.category,
-    categorySource: expense.categorySource,
-    aiSuggested: expense.aiSuggested,
-    createdAt: expense.createdAt
-  };
-}
-
-async function deleteExpense(email, expenseId) {
-  await ensureDatabase();
-  const id = String(expenseId || "").trim();
-  const emailFilter = normalizeEmail(email);
-  const conditions = [{ email: emailFilter, id }];
-  if (/^\d+$/.test(id)) conditions.push({ email: emailFilter, id: Number(id) });
-  if (/^[a-fA-F0-9]{24}$/.test(id)) conditions.push({ email: emailFilter, _id: id });
-
-  const result = await Expense.deleteOne({ $or: conditions });
-  if (!result.deletedCount) {
-    const error = new Error("Expense not found.");
-    error.statusCode = 404;
-    throw error;
-  }
-  return true;
-}
-
-function isHiddenLeaderboardName(value) {
-  const normalized = String(value || "").trim().toLowerCase();
-  return normalized.startsWith("prem");
-}
-
-async function getLeaderboard(currentEmail) {
-  await ensureDatabase();
-  return User.aggregate([
-    {
-      $lookup: {
-        from: Expense.collection.name,
-        let: { userEmail: "$email" },
-        pipeline: [
-          { $match: { $expr: { $eq: ["$email", "$$userEmail"] } } },
-          {
-            $group: {
-              _id: null,
-              totalExpense: { $sum: "$amount" },
-              expenseCount: { $sum: 1 }
-            }
-          }
-        ],
-        as: "expenseSummary"
-      }
-    },
-    {
-      $match: {
-        $expr: {
-          $not: {
-            $in: [
-              {
-                $trim: {
-                  input: {
-                    $toLower: {
-                      $ifNull: ["$name", ""]
-                    }
-                  }
-                }
-              },
-              ["prem"]
-            ]
-          }
-        }
-      }
-    },
-    {
-      $project: {
-        _id: 0,
-        id: { $toString: "$_id" },
-        name: { $ifNull: ["$name", "User"] },
-        email: 1,
-        totalExpense: {
-          $ifNull: [{ $arrayElemAt: ["$expenseSummary.totalExpense", 0] }, 0]
-        },
-        expenseCount: {
-          $ifNull: [{ $arrayElemAt: ["$expenseSummary.expenseCount", 0] }, 0]
-        }
-      }
-    },
-    { $sort: { totalExpense: -1, expenseCount: -1, name: 1, id: 1 } }
-  ]).then((rows) => rows.map((row, index) => ({
-    rank: index + 1,
-    id: row.id,
-    name: row.name,
-    isCurrentUser: normalizeEmail(row.email) === normalizeEmail(currentEmail),
-    totalExpense: Number(row.totalExpense || 0),
-    expenseCount: Number(row.expenseCount || 0)
-  }))).then((rows) => rows.filter((row) => !isHiddenLeaderboardName(row.name)));
-}
 
 async function createResetToken({ email, rawToken, expiresInMs = 900000 }) {
   await ensureDatabase();

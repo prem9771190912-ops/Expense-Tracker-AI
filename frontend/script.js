@@ -11,6 +11,18 @@ const description = document.getElementById("description");
 const category = document.getElementById("category");
 const aiSuggestion = document.getElementById("aiSuggestion");
 
+// Premium & Leaderboard DOM Elements
+const premiumHeadline = document.getElementById("premiumHeadline");
+const buyPremiumBtn = document.getElementById("buyPremiumBtn");
+const premiumUserBadge = document.getElementById("premiumUserBadge");
+const leaderboardBtn = document.getElementById("leaderboardBtn");
+const leaderboardSection = document.getElementById("leaderboardSection");
+const leaderboardTableBody = document.getElementById("leaderboardTableBody");
+const topSpenderNameEl = document.getElementById("topSpenderName");
+const topSpenderAmountEl = document.getElementById("topSpenderAmount");
+const limitSelect = document.getElementById("limitSelect");
+const pageSubtitle = document.getElementById("pageSubtitle");
+
 let authToken = localStorage.getItem("authToken") || localStorage.getItem("expenseTrackerToken");
 let currentUser = JSON.parse(localStorage.getItem("loggedInUser") || localStorage.getItem("expenseTrackerUser") || "null");
 
@@ -21,9 +33,54 @@ if (!authToken || !currentUser) {
 
 const esc = x => { const d = document.createElement("div"); d.textContent = x; return d.innerHTML; };
 
+function parseJwt(token) {
+  if (!token) return null;
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
+function syncPremiumStatus() {
+  const token = localStorage.getItem("authToken") || localStorage.getItem("expenseTrackerToken");
+  const decoded = parseJwt(token);
+  // Source of truth: whether user actually purchased premium membership
+  const isPremium = Boolean(
+    (currentUser && (currentUser.isPremium || currentUser.ispremiumuser)) ||
+    (decoded && (decoded.ispremiumuser || decoded.isPremium))
+  );
+  localStorage.setItem("ispremiumuser", isPremium ? "true" : "false");
+  if (currentUser) {
+    currentUser.ispremiumuser = isPremium;
+    currentUser.isPremium = isPremium;
+  }
+  return isPremium;
+}
+
+function updatePremiumUI() {
+  const isPremium = syncPremiumStatus();
+  if (isPremium) {
+    if (premiumHeadline) premiumHeadline.style.display = "flex";
+    // Hide Buy Premium button and display Premium User badge
+    if (buyPremiumBtn) buyPremiumBtn.style.display = "none";
+    if (premiumUserBadge) premiumUserBadge.style.display = "inline-flex";
+  } else {
+    if (premiumHeadline) premiumHeadline.style.display = "none";
+    // Show Buy Premium button and hide Premium User badge
+    if (buyPremiumBtn) buyPremiumBtn.style.display = "inline-flex";
+    if (premiumUserBadge) premiumUserBadge.style.display = "none";
+  }
+  if (leaderboardBtn) leaderboardBtn.style.display = "inline-flex";
+}
+
 function authHeaders() {
   const headers = {};
-  if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+  const token = localStorage.getItem("authToken") || localStorage.getItem("expenseTrackerToken") || authToken;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   return headers;
 }
 
@@ -34,10 +91,11 @@ function clearAuth() {
   localStorage.removeItem("expenseTrackerToken");
   localStorage.removeItem("loggedInUser");
   localStorage.removeItem("expenseTrackerUser");
+  localStorage.removeItem("ispremiumuser");
 }
 
 async function request(path, options = {}) {
-  const url = API + (path.startsWith("/api/") ? path.slice(4) : path);
+  const url = path.startsWith("http") ? path : (path.startsWith("/api") || path.startsWith("/purchase") || path.startsWith("/expense") ? path : `${API}${path}`);
   let response;
   try {
     response = await fetch(url, options);
@@ -68,6 +126,142 @@ if (logoutBtn) {
   });
 }
 
+
+// ==========================================================================
+// FEATURE 2: Premium Leaderboard
+// ==========================================================================
+function renderLeaderboard(users) {
+  if (!leaderboardTableBody) return;
+  if (!Array.isArray(users) || users.length === 0) {
+    leaderboardTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">No users on leaderboard yet.</div></td></tr>';
+    return;
+  }
+
+  const topUser = users[0];
+  const maxExpense = Number(topUser?.totalExpense || 0);
+
+  const currentUserName = currentUser?.name?.trim().toLowerCase();
+  const currentUserId = String(currentUser?.id || currentUser?._id || "");
+  const currentUserEmail = currentUser?.email?.trim().toLowerCase();
+
+  // Top Spender Highlight Banner
+  if (topSpenderNameEl && topUser) {
+    topSpenderNameEl.textContent = topUser.name || "User";
+  }
+  if (topSpenderAmountEl && topUser) {
+    topSpenderAmountEl.textContent = "₹" + maxExpense.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Check if current user is the top contributor
+  const isCurrentTopSpender = Boolean(
+    topUser && (
+      (currentUserEmail && String(topUser.email || "").trim().toLowerCase() === currentUserEmail) ||
+      (currentUserId && String(topUser.id || topUser._id || "") === currentUserId) ||
+      (currentUserName && String(topUser.name || "").trim().toLowerCase() === currentUserName)
+    ) && maxExpense > 0
+  );
+
+  // Premium is active ONLY if user has actually purchased premium membership
+  const isPremiumUser = Boolean(
+    currentUser?.isPremium ||
+    currentUser?.ispremiumuser ||
+    parseJwt(authToken)?.ispremiumuser
+  );
+
+  if (isPremiumUser) {
+    localStorage.setItem("ispremiumuser", "true");
+    if (currentUser) {
+      currentUser.ispremiumuser = true;
+      currentUser.isPremium = true;
+    }
+    if (premiumHeadline) {
+      premiumHeadline.style.display = "flex";
+      premiumHeadline.textContent = "🎉 You are a Premium User Now";
+    }
+    if (buyPremiumBtn) buyPremiumBtn.style.display = "none";
+    if (premiumUserBadge) premiumUserBadge.style.display = "inline-flex";
+  } else {
+    localStorage.setItem("ispremiumuser", "false");
+    if (currentUser) {
+      currentUser.ispremiumuser = false;
+      currentUser.isPremium = false;
+    }
+    if (premiumHeadline) {
+      premiumHeadline.style.display = "none";
+    }
+    if (buyPremiumBtn) buyPremiumBtn.style.display = "inline-flex";
+    if (premiumUserBadge) premiumUserBadge.style.display = "none";
+  }
+
+  leaderboardTableBody.innerHTML = users.slice(0, 3).map((u, index) => {
+    const rank = u.rank || (index + 1);
+    let rankBadge = `<span style="font-weight: 700; color: var(--text-muted);">#${rank}</span>`;
+    if (rank === 1) rankBadge = `<span style="font-size: 1.15rem; filter: drop-shadow(0 0 6px rgba(234, 179, 8, 0.6)); font-weight: 800;">🥇 1</span>`;
+    else if (rank === 2) rankBadge = `<span style="font-size: 1.15rem; font-weight: 800;">🥈 2</span>`;
+    else if (rank === 3) rankBadge = `<span style="font-size: 1.15rem; font-weight: 800;">🥉 3</span>`;
+
+    const isHighestExpense = rank === 1 && maxExpense > 0;
+    const isThisCurrentUser = (currentUserEmail && String(u.email || "").trim().toLowerCase() === currentUserEmail) ||
+                              (currentUserId && String(u.id || u._id || "") === currentUserId) ||
+                              (currentUserName && String(u.name || "").trim().toLowerCase() === currentUserName);
+
+    let statusBadge = "";
+    if (isHighestExpense) {
+      statusBadge = `<span style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(202, 138, 4, 0.45) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.6); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 10px rgba(234, 179, 8, 0.25);">👑 Premium Member (Rank Leader)</span>`;
+    } else {
+      statusBadge = `<span style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">Standard Member</span>`;
+    }
+
+    const userLabel = isThisCurrentUser
+      ? `<strong style="color: var(--emerald-text); font-size: 0.95rem;">${esc(u.name || "User")}</strong> <span style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">YOU</span>`
+      : `<span style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600;">${esc(u.name || "User")}</span>`;
+
+    return `
+      <tr style="${isHighestExpense ? 'background: rgba(234, 179, 8, 0.08); border-left: 3px solid #fde047;' : (isThisCurrentUser ? 'background: rgba(16, 185, 129, 0.06); border-left: 3px solid #10b981;' : '')}">
+        <td style="font-size: 1.05rem;">${rankBadge}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${userLabel}
+          </div>
+        </td>
+        <td style="text-align: center;">
+          ${statusBadge}
+        </td>
+        <td style="text-align: right; font-weight: 700; color: ${isHighestExpense ? '#fde047' : 'var(--emerald-text)'}; font-variant-numeric: tabular-nums; font-size: 1.05rem;">
+          ₹${Number(u.totalExpense || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function loadLeaderboard() {
+  if (!leaderboardTableBody) return;
+  try {
+    const data = await request("/api/leaderboard?public=true", { headers: authHeaders() });
+    const users = Array.isArray(data) ? data : (data.leaderboard || []);
+    renderLeaderboard(users);
+  } catch (err) {
+    if (leaderboardTableBody) {
+      leaderboardTableBody.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="color: var(--rose-text);">${esc(err.message)}</div></td></tr>`;
+    }
+  }
+}
+
+const refreshLeaderboardBtn = document.getElementById("refreshLeaderboardBtn");
+if (refreshLeaderboardBtn) {
+  refreshLeaderboardBtn.addEventListener("click", () => {
+    loadLeaderboard();
+  });
+}
+
+if (leaderboardBtn && leaderboardSection) {
+  leaderboardBtn.addEventListener("click", () => {
+    leaderboardSection.scrollIntoView({ behavior: "smooth" });
+    loadLeaderboard();
+  });
+}
+
 function renderExpenseItem(x) {
   const d = document.createElement("div");
   d.className = "expense";
@@ -94,12 +288,31 @@ function renderExpenseItem(x) {
   return d;
 }
 
-const ITEMS_PER_PAGE = 10;
+// ==========================================================================
+// FEATURE 7: Dynamic Expenses Per Page & LocalStorage Persistence
+// ==========================================================================
+let itemsPerPage = parseInt(localStorage.getItem("expensesPerPage"), 10) || 10;
+if (![5, 10, 20, 40].includes(itemsPerPage)) itemsPerPage = 10;
+
+if (limitSelect) {
+  limitSelect.value = String(itemsPerPage);
+  limitSelect.addEventListener("change", (e) => {
+    itemsPerPage = parseInt(e.target.value, 10) || 10;
+    localStorage.setItem("expensesPerPage", String(itemsPerPage));
+    if (pageSubtitle) pageSubtitle.textContent = `Showing ${itemsPerPage} expenses per page`;
+    currentPage = 1;
+    load(1);
+  });
+}
+
 let currentPage = 1;
 let totalPages = 1;
 let totalExpensesCount = 0;
 let allExpensesCache = [];
 
+// ==========================================================================
+// FEATURE 6: Frontend Pagination (Previous  1  2  3  4  5  Next)
+// ==========================================================================
 function renderPagination() {
   const paginationContainer = document.getElementById("paginationContainer");
   if (!paginationContainer) return;
@@ -111,30 +324,24 @@ function renderPagination() {
 
   paginationContainer.style.display = "flex";
 
-  const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const end = Math.min(currentPage * ITEMS_PER_PAGE, totalExpensesCount);
+  const start = (currentPage - 1) * itemsPerPage + 1;
+  const end = Math.min(currentPage * itemsPerPage, totalExpensesCount);
 
   const pageStartEl = document.getElementById("pageStart");
   const pageEndEl = document.getElementById("pageEnd");
   const totalItemsEl = document.getElementById("totalItems");
   const pageBadgeEl = document.getElementById("pageBadge");
-  const lastPageNumEl = document.getElementById("lastPageNumberDisplay");
 
   if (pageStartEl) pageStartEl.textContent = start;
   if (pageEndEl) pageEndEl.textContent = end;
   if (totalItemsEl) totalItemsEl.textContent = totalExpensesCount;
   if (pageBadgeEl) pageBadgeEl.textContent = `Page ${currentPage} of ${totalPages}`;
-  if (lastPageNumEl) lastPageNumEl.textContent = totalPages;
 
-  const firstBtn = document.getElementById("firstPageBtn");
   const prevBtn = document.getElementById("prevPageBtn");
   const nextBtn = document.getElementById("nextPageBtn");
-  const lastBtn = document.getElementById("lastPageBtn");
 
-  if (firstBtn) firstBtn.disabled = currentPage <= 1;
   if (prevBtn) prevBtn.disabled = currentPage <= 1;
   if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
-  if (lastBtn) lastBtn.disabled = currentPage >= totalPages;
 
   const numbersContainer = document.getElementById("paginationNumbers");
   if (numbersContainer) {
@@ -180,13 +387,6 @@ function renderPagination() {
 }
 
 // Attach Pagination Button Handlers
-const firstPageBtn = document.getElementById("firstPageBtn");
-if (firstPageBtn) {
-  firstPageBtn.addEventListener("click", () => {
-    if (currentPage > 1) load(1);
-  });
-}
-
 const prevPageBtn = document.getElementById("prevPageBtn");
 if (prevPageBtn) {
   prevPageBtn.addEventListener("click", () => {
@@ -201,13 +401,6 @@ if (nextPageBtn) {
   });
 }
 
-const lastPageBtn = document.getElementById("lastPageBtn");
-if (lastPageBtn) {
-  lastPageBtn.addEventListener("click", () => {
-    if (currentPage < totalPages) load(totalPages);
-  });
-}
-
 function setTotalDisplay(sum) {
   if (!total) return;
   const num = Number(sum) || 0;
@@ -217,26 +410,38 @@ function setTotalDisplay(sum) {
 async function load(targetPage = currentPage) {
   if (!currentUser || !list) return;
   try {
-    const result = await request(`/api/expenses?page=${encodeURIComponent(targetPage)}&limit=${ITEMS_PER_PAGE}`, {
+    const result = await request(`/expense?page=${encodeURIComponent(targetPage)}&limit=${itemsPerPage}`, {
       headers: authHeaders()
     });
 
     let currentExpenses = [];
     if (result && Array.isArray(result.expenses)) {
+      totalExpensesCount = result.totalItems != null ? result.totalItems : (result.totalExpenses != null ? result.totalExpenses : result.expenses.length);
+      totalPages = result.lastPage || Math.max(1, Math.ceil(totalExpensesCount / itemsPerPage));
+
+      // Requirement: If current page becomes invalid, move to the last valid page
+      if (targetPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+        return load(totalPages);
+      }
+
       currentExpenses = result.expenses;
       currentPage = result.currentPage || targetPage;
-      totalPages = result.totalPages || 1;
-      totalExpensesCount = result.totalExpenses != null ? result.totalExpenses : result.expenses.length;
+
       if (result.totalAmount != null) {
         setTotalDisplay(result.totalAmount);
       }
     } else if (Array.isArray(result)) {
       allExpensesCache = result;
       totalExpensesCount = allExpensesCache.length;
-      totalPages = Math.max(1, Math.ceil(totalExpensesCount / ITEMS_PER_PAGE));
+      totalPages = Math.max(1, Math.ceil(totalExpensesCount / itemsPerPage));
+      if (targetPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+        return load(totalPages);
+      }
       currentPage = Math.min(Math.max(1, targetPage), totalPages);
-      const start = (currentPage - 1) * ITEMS_PER_PAGE;
-      currentExpenses = allExpensesCache.slice(start, start + ITEMS_PER_PAGE);
+      const start = (currentPage - 1) * itemsPerPage;
+      currentExpenses = allExpensesCache.slice(start, start + itemsPerPage);
       const sum = allExpensesCache.reduce((a, b) => a + (Number(b.amount) || 0), 0);
       setTotalDisplay(sum);
     }
@@ -381,10 +586,17 @@ async function refreshSession() {
   if (!authToken) return;
   try {
     const data = await request("/api/auth/me", { headers: authHeaders() });
+    if (data.token) {
+      authToken = data.token;
+      localStorage.setItem("authToken", data.token);
+      localStorage.setItem("expenseTrackerToken", data.token);
+    }
     if (data.user) {
       currentUser = data.user;
       localStorage.setItem("loggedInUser", JSON.stringify(currentUser));
       localStorage.setItem("expenseTrackerUser", JSON.stringify(currentUser));
+      const isPrem = Boolean(currentUser.isPremium || currentUser.ispremiumuser);
+      localStorage.setItem("ispremiumuser", isPrem ? "true" : "false");
     }
   } catch (error) {
     clearAuth();
@@ -393,7 +605,209 @@ async function refreshSession() {
 }
 
 if (currentUser && authToken) {
+  updatePremiumUI();
   refreshSession().finally(() => {
+    updatePremiumUI();
     load();
+    loadLeaderboard();
   });
 }
+
+// ============================================================================
+// CASHFREE PAYMENT GATEWAY INTEGRATION
+// ============================================================================
+
+/**
+ * Open the interactive Cashfree Sandbox Checkout Modal on page
+ */
+function openCashfreeModal(orderId, paymentSessionId, amount) {
+  const modal = document.getElementById("cashfreeModal");
+  const modalOrderId = document.getElementById("cfModalOrderId");
+  const closeBtn = document.getElementById("closeCfModalBtn");
+  const paySuccessBtn = document.getElementById("cfPaySuccessBtn");
+  const payFailBtn = document.getElementById("cfPayFailBtn");
+
+  if (!modal) {
+    console.error("Cashfree modal element not found in DOM.");
+    return;
+  }
+
+  if (modalOrderId) {
+    modalOrderId.textContent = `Order ID: ${orderId}`;
+  }
+
+  modal.style.display = "flex";
+
+  const cleanup = () => {
+    modal.style.display = "none";
+    if (closeBtn) closeBtn.onclick = null;
+    if (paySuccessBtn) paySuccessBtn.onclick = null;
+    if (payFailBtn) payFailBtn.onclick = null;
+  };
+
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      cleanup();
+      handlePaymentStatusUpdate(orderId, false);
+    };
+  }
+
+  if (payFailBtn) {
+    payFailBtn.onclick = () => {
+      cleanup();
+      handlePaymentStatusUpdate(orderId, false);
+    };
+  }
+
+  if (paySuccessBtn) {
+    paySuccessBtn.onclick = () => {
+      cleanup();
+      handlePaymentStatusUpdate(orderId, true);
+    };
+  }
+}
+
+/**
+ * Call POST /purchase/update-status to verify order payment with Cashfree
+ * and update local user premium state and badge UI.
+ */
+async function handlePaymentStatusUpdate(orderId, simulateSuccess = null) {
+  if (!orderId) return;
+
+  try {
+    const payload = { orderId: orderId };
+    if (simulateSuccess !== null) {
+      payload.testSuccess = Boolean(simulateSuccess);
+      payload.status = simulateSuccess ? "SUCCESSFUL" : "FAILED";
+    }
+
+    const updateRes = await request("/purchase/update-status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (updateRes && (updateRes.success || updateRes.status === "SUCCESSFUL")) {
+      // 1. Update JWT authentication token if a new token was returned
+      if (updateRes.token) {
+        localStorage.setItem("authToken", updateRes.token);
+        localStorage.setItem("expenseTrackerToken", updateRes.token);
+        authToken = updateRes.token;
+      }
+
+      // 2. Mark user as premium in local storage & memory
+      localStorage.setItem("ispremiumuser", "true");
+      if (currentUser) {
+        currentUser.ispremiumuser = true;
+        currentUser.isPremium = true;
+        localStorage.setItem("loggedInUser", JSON.stringify(currentUser));
+        localStorage.setItem("expenseTrackerUser", JSON.stringify(currentUser));
+      }
+
+      // 3. Update dashboard UI (hide Buy Premium button, show Premium User badge)
+      updatePremiumUI();
+      if (typeof loadLeaderboard === "function") {
+        loadLeaderboard();
+      }
+
+      // 4. Alert user of successful transaction
+      alert("Transaction Successful");
+    } else {
+      // 4. Alert user of failed transaction
+      alert("TRANSACTION FAILED");
+    }
+  } catch (err) {
+    console.error("Payment status verification failed:", err);
+    alert("TRANSACTION FAILED");
+  }
+}
+
+/**
+ * Handle Buy Premium Membership button click:
+ * 1. Call POST /purchase/premium to create Cashfree order and obtain payment_session_id
+ * 2. Open Cashfree Checkout Modal using Cashfree JS SDK or Sandbox Interactive Modal
+ * 3. On payment completion, call POST /purchase/update-status
+ */
+async function handleBuyPremium() {
+  if (!buyPremiumBtn) return;
+  const originalText = buyPremiumBtn.innerHTML;
+
+  try {
+    buyPremiumBtn.disabled = true;
+    buyPremiumBtn.innerHTML = "⏳ Processing...";
+
+    // 1. Request Cashfree order creation from backend
+    const data = await request("/purchase/premium", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders()
+      },
+      body: JSON.stringify({ amount: 199.00 })
+    });
+
+    const paymentSessionId = data.payment_session_id || data.paymentSessionId;
+    const orderId = data.order_id || data.orderId;
+
+    if (!paymentSessionId || !orderId) {
+      throw new Error(data.message || "Failed to initialize payment session.");
+    }
+
+    // 2. Open Cashfree Checkout Modal
+    const isRealSession = paymentSessionId && !paymentSessionId.startsWith("sandbox_session_");
+    let openedOfficial = false;
+
+    if (isRealSession && typeof window.Cashfree !== "undefined") {
+      try {
+        const cashfree = window.Cashfree({ mode: "sandbox" });
+        const checkoutOptions = {
+          paymentSessionId: paymentSessionId,
+          redirectTarget: "_modal"
+        };
+
+        cashfree.checkout(checkoutOptions).then(async (result) => {
+          if (result && result.error) {
+            console.warn("Cashfree checkout error:", result.error);
+          }
+          await handlePaymentStatusUpdate(orderId);
+        }).catch((err) => {
+          console.warn("Official checkout failed, falling back to sandbox modal:", err);
+          openCashfreeModal(orderId, paymentSessionId, 199.00);
+        });
+        openedOfficial = true;
+      } catch (e) {
+        console.warn("Cashfree checkout launch error:", e);
+      }
+    }
+
+    if (!openedOfficial) {
+      // Open Cashfree Sandbox Interactive Modal
+      openCashfreeModal(orderId, paymentSessionId, 199.00);
+    }
+  } catch (error) {
+    console.error("handleBuyPremium error:", error);
+    alert("TRANSACTION FAILED");
+  } finally {
+    if (buyPremiumBtn) {
+      buyPremiumBtn.disabled = false;
+      buyPremiumBtn.innerHTML = originalText;
+    }
+  }
+}
+
+// Bind Buy Premium Membership button click listener
+if (buyPremiumBtn) {
+  buyPremiumBtn.addEventListener("click", handleBuyPremium);
+}
+
+// Handle payment return if redirected via URL query param (?order_id=...)
+const urlParams = new URLSearchParams(window.location.search);
+const redirectOrderId = urlParams.get("order_id");
+if (redirectOrderId) {
+  window.history.replaceState({}, document.title, window.location.pathname);
+  handlePaymentStatusUpdate(redirectOrderId);
+}
+

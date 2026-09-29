@@ -68,32 +68,31 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+
+
+const purchaseRoutes = require("./routes/purchaseRoutes");
+
 // --- API Routes ---
 app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
-app.get("/api/leaderboard", authMiddleware, expenseController.getLeaderboard);
+app.use("/expense", expenseRoutes);
+app.use("/expenses", expenseRoutes);
+app.use("/purchase", purchaseRoutes);
+app.use("/api/purchase", purchaseRoutes);
+app.use("/premium", expenseRoutes);
+app.get("/api/leaderboard", authMiddleware.optional || authMiddleware, expenseController.getLeaderboard);
+app.get("/leaderboard", authMiddleware.optional || authMiddleware, expenseController.getLeaderboard);
+app.get("/api/download-report", authMiddleware, expenseController.downloadReport);
+app.get("/download-report", authMiddleware, expenseController.downloadReport);
 app.use("/api/ai", aiRoutes);
 
-// Password Reset Routes (Takes mail ID in request body and sends via Sendinblue)
-const authController = require("./controllers/authController");
-app.post("/password/forgotpassword", authController.forgotPassword);
-app.post("/password/forgot-password", authController.forgotPassword);
-app.post("/api/password/forgotpassword", authController.forgotPassword);
-
-// Reset Password View Routes (When user clicks reset link in email)
-app.get("/password/resetpassword/:id", (req, res) => {
-  res.redirect(`/reset-password.html?token=${encodeURIComponent(req.params.id)}`);
-});
+// Password Reset Routes (Sharpener module: Forgot, Reset & Update Password)
+const passwordRoutes = require("./routes/passwordRoutes");
+app.use("/password", passwordRoutes);
+app.use("/api/password", passwordRoutes);
 app.get("/password/resetpassword", (req, res) => {
   res.redirect("/reset-password.html");
 });
-
-// Reset Password Submission Routes (Handles all possible endpoint variations)
-app.post("/password/resetpassword", authController.resetPassword);
-app.post("/password/resetpassword/:id", authController.resetPassword);
-app.post("/password/updatepassword/:id", authController.resetPassword);
-app.post("/password/updatepassword", authController.resetPassword);
-app.post("/api/password/resetpassword", authController.resetPassword);
 
 // Keep the legacy categorization URL working for older frontend bundles.
 app.post("/api/categorize-expense", require("./controllers/aiController").categorize);

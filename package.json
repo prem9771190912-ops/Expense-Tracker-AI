@@ -13,13 +13,18 @@
   },
   "dependencies": {
     "axios": "^1.20.0",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "cashfree-pg": "^6.0.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^9.10.1",
     "openai": "^6.16.0",
-    "sib-api-v3-sdk": "^8.5.0"
+    "razorpay": "^2.9.8",
+    "sequelize": "^6.37.8",
+    "sib-api-v3-sdk": "^8.5.0",
+    "uuid": "^14.0.2"
   }
 }

@@ -53,8 +53,22 @@ form.addEventListener("submit", async (event) => {
     if (result.token) {
       localStorage.setItem("authToken", result.token);
       localStorage.setItem("expenseTrackerToken", result.token);
+      try {
+        const base64Url = result.token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        const decoded = JSON.parse(jsonPayload);
+        const isPremium = Boolean(decoded.ispremiumuser);
+        localStorage.setItem("ispremiumuser", isPremium ? "true" : "false");
+      } catch (e) {
+        localStorage.setItem("ispremiumuser", Boolean(result.user?.ispremiumuser) ? "true" : "false");
+      }
     }
     const userObj = result.user || { email: user.email, name: user.email.split("@")[0] };
+    if (localStorage.getItem("ispremiumuser") === "true") {
+      userObj.ispremiumuser = true;
+      userObj.isPremium = true;
+    }
     localStorage.setItem("loggedInUser", JSON.stringify(userObj));
     localStorage.setItem("expenseTrackerUser", JSON.stringify(userObj));
     
@@ -133,10 +147,10 @@ if (forgotPasswordForm) {
 
       if (message) {
         message.style.color = "#34d399";
-        const link = response.data?.resetUrl
-          ? `<br><br><a href="${response.data.resetUrl}" style="color: #6ee7b7; font-weight: bold; text-decoration: underline;">👉 Click here to Reset Password Now</a>`
+        const link = response.data?.resetLink || response.data?.resetUrl
+          ? `<br><br><a href="${response.data.resetLink || response.data.resetUrl}" style="color: #6ee7b7; font-weight: bold; text-decoration: underline;">👉 Click here to Reset Password Now</a>`
           : "";
-        message.innerHTML = `✅ ${response.data.message || "Password reset mail sent successfully."}${link}`;
+        message.innerHTML = `✅ ${response.data.message || "Reset password link sent to your email."}${link}`;
       }
       forgotPasswordForm.reset();
     } catch (error) {
