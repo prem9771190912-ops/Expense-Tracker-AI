@@ -103,7 +103,6 @@ const notesStatus = document.getElementById("notesStatus");
 function updatePremiumUI() {
   const isPremium = getIsPremium();
   const currentCsvFileName = getReportFileName(currentFilter, "csv");
-  const currentPdfFileName = getReportFileName(currentFilter, "pdf");
 
   if (isPremium) {
     if (premiumHeadline) {
@@ -123,12 +122,6 @@ function updatePremiumUI() {
       downloadReportBtn.innerHTML = `📥 Download Report (${currentCsvFileName})`;
       downloadReportBtn.title = `Download ${currentCsvFileName}`;
     }
-    if (downloadPdfBtn) {
-      downloadPdfBtn.disabled = false;
-      downloadPdfBtn.style.cursor = "pointer";
-      downloadPdfBtn.style.opacity = "1";
-      downloadPdfBtn.title = `Download ${currentPdfFileName}`;
-    }
   } else {
     if (premiumHeadline) {
       premiumHeadline.style.display = "none";
@@ -142,12 +135,6 @@ function updatePremiumUI() {
       downloadReportBtn.style.color = "#fca5a5";
       downloadReportBtn.innerHTML = "🔒 Download Report (Premium Only)";
       downloadReportBtn.title = "Only users with premium membership can download reports.";
-    }
-    if (downloadPdfBtn) {
-      downloadPdfBtn.disabled = false;
-      downloadPdfBtn.style.cursor = "not-allowed";
-      downloadPdfBtn.style.opacity = "0.6";
-      downloadPdfBtn.title = "Only users with premium membership can download reports.";
     }
   }
 }
@@ -482,19 +469,17 @@ async function executeReportDownload(format = "csv") {
     return;
   }
 
-  const activeBtn = format === "pdf" ? downloadPdfBtn : downloadReportBtn;
-  if (activeBtn) {
-    activeBtn.disabled = true;
-    activeBtn.innerHTML = format === "pdf" ? "⏳ PDF..." : "⏳ CSV...";
+  if (downloadReportBtn) {
+    downloadReportBtn.disabled = true;
+    downloadReportBtn.innerHTML = "⏳ Downloading CSV...";
   }
 
   try {
-    const mimeType = format === "pdf" ? "application/pdf" : "text/csv";
-    const res = await fetch(`/api/download-report?period=${currentFilter}&date=${selectedDateStr}&format=${format}`, {
+    const res = await fetch(`/api/download-report?period=${currentFilter}&date=${selectedDateStr}&format=csv`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${authToken}`,
-        "Accept": mimeType
+        "Accept": "text/csv"
       }
     });
 
@@ -506,7 +491,7 @@ async function executeReportDownload(format = "csv") {
 
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.message || `Failed to download ${format.toUpperCase()} report.`);
+      throw new Error(errJson.message || "Failed to download CSV report.");
     }
 
     const blob = await res.blob();
@@ -519,13 +504,13 @@ async function executeReportDownload(format = "csv") {
     downloadAnchor.remove();
     window.URL.revokeObjectURL(blobUrl);
 
-    showToast("Report Downloaded", `${targetFileName} has been downloaded successfully.`);
+    showToast("CSV Downloaded", `${targetFileName} has been downloaded successfully.`);
   } catch (err) {
     console.error("Download error:", err);
     showToast("Download Failed", err.message, true);
   } finally {
-    if (activeBtn) {
-      activeBtn.disabled = false;
+    if (downloadReportBtn) {
+      downloadReportBtn.disabled = false;
     }
     updatePremiumUI();
   }
@@ -533,10 +518,6 @@ async function executeReportDownload(format = "csv") {
 
 if (downloadReportBtn) {
   downloadReportBtn.addEventListener("click", () => executeReportDownload("csv"));
-}
-
-if (downloadPdfBtn) {
-  downloadPdfBtn.addEventListener("click", () => executeReportDownload("pdf"));
 }
 
 // Notes Section Storage

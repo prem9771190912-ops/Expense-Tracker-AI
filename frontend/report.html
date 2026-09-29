@@ -39,13 +39,10 @@
         <h1>Premium Expense & Income Reports</h1>
         <p class="subtitle">Complete breakdown of transactions, savings, yearly summary and notes.</p>
       </div>
-      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <div>
         <!-- Feature 4: Download Report Button (CSV) -->
         <button type="button" id="downloadReportBtn" class="btn" title="Download Report as CSV" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%); color: var(--emerald-text); border: 1px solid rgba(16, 185, 129, 0.4); padding: 10px 18px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
           📥 Download Report (CSV)
-        </button>
-        <button type="button" id="downloadPdfBtn" class="btn" title="Download Report as PDF" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-          📄 PDF
         </button>
       </div>
     </header>
@@ -191,16 +188,16 @@
       
       <div class="modal-content-wrap">
         <span class="modal-eyebrow">Premium Privilege</span>
-        <h2 id="modalTitle">PDF Report Download Restricted</h2>
+        <h2 id="modalTitle">CSV Report Download Restricted</h2>
         <p class="modal-description">
-          Financial report PDF downloads (Daily, Weekly, Monthly, and Yearly) are reserved exclusively for <strong>Premium Members</strong>.
+          Financial report CSV downloads (Daily, Weekly, Monthly, and Yearly) are reserved exclusively for <strong>Premium Members</strong>.
         </p>
 
         <div class="modal-status-grid">
           <div class="status-box current-status">
             <span class="status-label">Your Membership</span>
             <span class="status-val text-warning" id="modalUserRank">Standard Member</span>
-            <span class="status-sub" id="modalUserExpense">Upgrade to unlock CSV & PDF reports</span>
+            <span class="status-sub" id="modalUserExpense">Upgrade to unlock CSV reports</span>
           </div>
           <div class="status-box target-status">
             <span class="status-label">Unlock Benefits</span>
