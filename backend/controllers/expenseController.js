@@ -1,5 +1,7 @@
 const db = require("../utils/db");
+const Expense = require("../models/Expense");
 const { categorizeExpense } = require("../services/aiService");
+const { generateReportPDF } = require("../services/pdfReportService");
 
 const CATEGORIES = new Set([
   "Food",
@@ -157,39 +159,140 @@ exports.getLeaderboard = async (req, res) => {
 
 exports.downloadReport = async (req, res) => {
   try {
-    const currentEmail = req.user?.email?.trim().toLowerCase();
-    const currentId = String(req.user?.id || req.user?._id || "");
+    const isPremiumUser = Boolean(req.user?.isPremium || req.user?.ispremiumuser);
 
-    const allUsers = await db.getLeaderboard({});
-    const topUser = allUsers[0];
-    const maxExpense = Number(topUser?.totalExpense || 0);
-
-    const isTopSpender = Boolean(
-      topUser &&
-      ((currentEmail && String(topUser.email || "").toLowerCase() === currentEmail) ||
-       (currentId && String(topUser.id) === currentId)) &&
-      maxExpense > 0
-    );
-
-    const hasAccess = Boolean(req.user?.isPremium || req.user?.ispremiumuser || isTopSpender);
-
-    if (!hasAccess) {
+    // Requirement 7: Only users with isPremium = true can download. Return 403 if non-premium user tries.
+    if (!isPremiumUser) {
       return res.status(403).json({
         success: false,
-        message: "Access Denied: Report export is an exclusive feature reserved for Premium Members and the Rank #1 Leaderboard contributor."
+        message: "Access Denied: Only users with premium membership can download reports."
       });
     }
 
-    const expenses = await db.getExpenses(currentEmail);
+    const currentEmail = String(req.user?.email || "").trim().toLowerCase();
+    const period = String(req.query.period || "daily").trim().toLowerCase();
+    const dateQuery = String(req.query.date || "").trim() || new Date().toISOString().slice(0, 10);
+
+    // Parse date parts safely
+    const [yearPart, monthPart, dayPart] = dateQuery.split("-").map(Number);
+    const validYear = Number.isInteger(yearPart) && yearPart > 1900 ? yearPart : new Date().getFullYear();
+    const validMonth = Number.isInteger(monthPart) && monthPart >= 1 && monthPart <= 12 ? monthPart : (new Date().getMonth() + 1);
+    const validDay = Number.isInteger(dayPart) && dayPart >= 1 && dayPart <= 31 ? dayPart : new Date().getDate();
+
+    let startDate, endDate, periodLabel, fileName, dateRange;
+
+    if (period === "weekly") {
+      const refDate = new Date(validYear, validMonth - 1, validDay, 0, 0, 0, 0);
+      const dayOfWeek = refDate.getDay(); // 0 is Sunday
+      startDate = new Date(refDate);
+      startDate.setDate(refDate.getDate() - dayOfWeek);
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+
+      periodLabel = "Weekly";
+      fileName = "Weekly_Report.pdf";
+      dateRange = `${startDate.toLocaleDateString("en-IN")} to ${endDate.toLocaleDateString("en-IN")}`;
+    } else if (period === "monthly") {
+      startDate = new Date(validYear, validMonth - 1, 1, 0, 0, 0, 0);
+      endDate = new Date(validYear, validMonth, 0, 23, 59, 59, 999);
+
+      periodLabel = "Monthly";
+      fileName = "Monthly_Report.pdf";
+      const monthName = startDate.toLocaleString("en-US", { month: "long" });
+      dateRange = `${monthName} ${validYear} (${startDate.toLocaleDateString("en-IN")} to ${endDate.toLocaleDateString("en-IN")})`;
+    } else if (period === "yearly") {
+      startDate = new Date(validYear, 0, 1, 0, 0, 0, 0);
+      endDate = new Date(validYear, 11, 31, 23, 59, 59, 999);
+
+      periodLabel = "Yearly";
+      fileName = "Yearly_Report.pdf";
+      dateRange = `Year ${validYear} (01/01/${validYear} to 31/12/${validYear})`;
+    } else {
+      // Default: daily
+      startDate = new Date(validYear, validMonth - 1, validDay, 0, 0, 0, 0);
+      endDate = new Date(validYear, validMonth - 1, validDay, 23, 59, 59, 999);
+
+      periodLabel = "Daily";
+      fileName = "Daily_Report.pdf";
+      dateRange = `${String(validDay).padStart(2, "0")}/${String(validMonth).padStart(2, "0")}/${validYear}`;
+    }
+
+    // Requirement 3: Reports must contain ONLY the logged-in user's expenses (not leaderboard users).
+    // Requirement 6: Filter transactions using JWT user id/email.
+    const userExpenses = await Expense.find({ email: currentEmail }).sort({ createdAt: -1 }).lean();
+    const filtered = userExpenses.filter((item) => {
+      const itemDate = new Date(item.createdAt || item.date || Date.now());
+      return itemDate >= startDate && itemDate <= endDate;
+    });
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    const transactions = filtered.map((item) => {
+      const amt = Number(item.amount) || 0;
+      const catLower = String(item.category || "").trim().toLowerCase();
+      const isIncome = catLower === "salary" || catLower === "income";
+      if (isIncome) {
+        totalIncome += amt;
+      } else {
+        totalExpense += amt;
+      }
+      const itemDate = new Date(item.createdAt || item.date || Date.now());
+      return {
+        id: item.id || item._id,
+        date: itemDate.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }),
+        description: item.description || "N/A",
+        category: item.category || "General",
+        type: isIncome ? "Income" : "Expense",
+        amount: amt
+      };
+    });
+
+    const savings = totalIncome - totalExpense;
+
+    const reportData = {
+      userName: req.user.name || "User",
+      userEmail: currentEmail,
+      selectedPeriod: periodLabel,
+      dateRange,
+      fileName,
+      totalIncome,
+      totalExpense,
+      savings,
+      transactions
+    };
+
+    // If client requested PDF download:
+    const wantsPdf = req.query.format === "pdf" || String(req.headers.accept || "").includes("application/pdf");
+    if (wantsPdf) {
+      const pdfBuffer = await generateReportPDF(reportData);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      res.setHeader("Content-Length", pdfBuffer.length);
+      return res.send(pdfBuffer);
+    }
+
+    // Default JSON response for API & automated test suites
     return res.json({
       success: true,
-      message: "Report file generated successfully.",
+      message: "Report generated successfully.",
       user: {
         name: req.user.name,
-        email: currentEmail,
-        totalExpense: req.user.totalExpense
+        email: currentEmail
       },
-      expenses
+      period: periodLabel,
+      dateRange,
+      fileName,
+      metrics: {
+        totalIncome,
+        totalExpense,
+        savings
+      },
+      transactions,
+      expenses: filtered
     });
   } catch (error) {
     console.error("downloadReport error:", error.message);

@@ -41,18 +41,19 @@
       </div>
       <div>
         <!-- Feature 4: Download Report Button -->
-        <button type="button" id="downloadReportBtn" class="btn" title="Download active report as JSON" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%); color: var(--emerald-text); border: 1px solid rgba(16, 185, 129, 0.4); padding: 10px 18px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
-          📥 Download Report (JSON)
+        <button type="button" id="downloadReportBtn" class="btn" title="Download Report as PDF" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%); color: var(--emerald-text); border: 1px solid rgba(16, 185, 129, 0.4); padding: 10px 18px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+          📥 Download Report (PDF)
         </button>
       </div>
     </header>
 
-    <!-- Feature 3: Period Tabs (Daily, Weekly, Monthly) -->
+    <!-- Feature 3: Period Tabs (Daily, Weekly, Monthly, Yearly) -->
     <section class="report-tabs-bar">
       <div class="report-tab-group">
         <button type="button" id="btnDaily" class="report-tab-btn active">📅 Daily</button>
         <button type="button" id="btnWeekly" class="report-tab-btn">📆 Weekly</button>
         <button type="button" id="btnMonthly" class="report-tab-btn">🗓️ Monthly</button>
+        <button type="button" id="btnYearly" class="report-tab-btn">📈 Yearly</button>
       </div>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="reportDate" style="font-size: 0.88rem; color: var(--text-secondary);">Select Date:</label>
@@ -186,33 +187,33 @@
       </div>
       
       <div class="modal-content-wrap">
-        <span class="modal-eyebrow">Tier-Locked Privilege</span>
-        <h2 id="modalTitle">Report Export Restricted</h2>
+        <span class="modal-eyebrow">Premium Privilege</span>
+        <h2 id="modalTitle">PDF Report Download Restricted</h2>
         <p class="modal-description">
-          Financial analytics exports (JSON & CSV reports) are reserved exclusively for the <strong>Leaderboard Rank #1 Contributor</strong>.
+          Financial report PDF downloads (Daily, Weekly, Monthly, and Yearly) are reserved exclusively for <strong>Premium Members</strong>.
         </p>
 
         <div class="modal-status-grid">
           <div class="status-box current-status">
-            <span class="status-label">Your Standing</span>
+            <span class="status-label">Your Membership</span>
             <span class="status-val text-warning" id="modalUserRank">Standard Member</span>
-            <span class="status-sub" id="modalUserExpense">Expense: ₹0.00</span>
+            <span class="status-sub" id="modalUserExpense">Upgrade to unlock PDF reports</span>
           </div>
           <div class="status-box target-status">
-            <span class="status-label">Rank #1 Target</span>
-            <span class="status-val text-gold" id="modalTargetSpender">prem9771190912</span>
-            <span class="status-sub" id="modalTargetExpense">Expense: ₹30,300.00</span>
+            <span class="status-label">Unlock Benefits</span>
+            <span class="status-val text-gold">Premium Access</span>
+            <span class="status-sub">Daily, Weekly, Monthly & Yearly PDFs</span>
           </div>
         </div>
 
         <div class="modal-info-note">
           <span class="info-icon">💡</span>
-          <span>Record more transactions to overtake the current rank leader and automatically unlock comprehensive financial report exports.</span>
+          <span>Get Premium Membership today to download official financial summary PDFs and unlock leaderboards.</span>
         </div>
 
         <div class="modal-actions">
-          <a href="index.html#leaderboardSection" class="modal-btn modal-primary-btn">
-            🏆 View Live Leaderboard
+          <a href="index.html" class="modal-btn modal-primary-btn">
+            👑 Buy Premium Membership
           </a>
           <button type="button" id="closePremiumModalBtn" class="modal-btn modal-secondary-btn">
             Dismiss

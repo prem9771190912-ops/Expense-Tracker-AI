@@ -20,7 +20,22 @@ function parseJwt(token) {
 }
 
 function getIsPremium() {
-  return localStorage.getItem("ispremiumuser") === "true";
+  return Boolean(
+    localStorage.getItem("ispremiumuser") === "true" ||
+    loggedInUser?.isPremium ||
+    loggedInUser?.ispremiumuser ||
+    parseJwt(authToken)?.ispremiumuser
+  );
+}
+
+function getReportFileName(filter) {
+  switch (String(filter || "").toLowerCase()) {
+    case "weekly": return "Weekly_Report.pdf";
+    case "monthly": return "Monthly_Report.pdf";
+    case "yearly": return "Yearly_Report.pdf";
+    case "daily":
+    default: return "Daily_Report.pdf";
+  }
 }
 
 const logoutBtn = document.getElementById("logoutBtn");
@@ -44,7 +59,7 @@ function formatCurrency(amount) {
 
 // Global Report State
 let allExpenses = [];
-let currentFilter = "daily"; // 'daily', 'weekly', 'monthly'
+let currentFilter = "daily"; // 'daily', 'weekly', 'monthly', 'yearly'
 let selectedDateStr = new Date().toISOString().slice(0, 10);
 let displayedTransactions = [];
 let currentYearlySummary = [];
@@ -54,6 +69,7 @@ const downloadReportBtn = document.getElementById("downloadReportBtn");
 const btnDaily = document.getElementById("btnDaily");
 const btnWeekly = document.getElementById("btnWeekly");
 const btnMonthly = document.getElementById("btnMonthly");
+const btnYearly = document.getElementById("btnYearly");
 const reportDateInput = document.getElementById("reportDate");
 const loadingIndicator = document.getElementById("loadingIndicator");
 const reportContent = document.getElementById("reportContent");
@@ -84,13 +100,15 @@ const notesStatus = document.getElementById("notesStatus");
 
 function updatePremiumUI() {
   const isPremium = getIsPremium();
+  const currentFileName = getReportFileName(currentFilter);
+
   if (isPremium) {
     if (premiumHeadline) {
       premiumHeadline.style.display = "flex";
       premiumHeadline.style.background = "linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.28) 50%, rgba(16, 185, 129, 0.2) 100%)";
       premiumHeadline.style.borderColor = "rgba(245, 158, 11, 0.5)";
       premiumHeadline.style.color = "#fef08a";
-      premiumHeadline.textContent = "🎉 You are a Premium User Now (Rank 1 Leader)";
+      premiumHeadline.textContent = "🎉 You are a Premium User Now";
     }
     if (downloadReportBtn) {
       downloadReportBtn.disabled = false;
@@ -99,8 +117,8 @@ function updatePremiumUI() {
       downloadReportBtn.style.background = "linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%)";
       downloadReportBtn.style.borderColor = "rgba(16, 185, 129, 0.4)";
       downloadReportBtn.style.color = "var(--emerald-text)";
-      downloadReportBtn.innerHTML = "📥 Download Report (JSON)";
-      downloadReportBtn.title = "Download active report as JSON";
+      downloadReportBtn.innerHTML = `📥 Download Report (${currentFileName})`;
+      downloadReportBtn.title = `Download ${currentFileName}`;
     }
   } else {
     if (premiumHeadline) {
@@ -109,12 +127,12 @@ function updatePremiumUI() {
     if (downloadReportBtn) {
       downloadReportBtn.disabled = false; // kept clickable to show prompt alert
       downloadReportBtn.style.cursor = "not-allowed";
-      downloadReportBtn.style.opacity = "0.65";
+      downloadReportBtn.style.opacity = "0.75";
       downloadReportBtn.style.background = "rgba(239, 68, 68, 0.12)";
       downloadReportBtn.style.borderColor = "rgba(239, 68, 68, 0.35)";
       downloadReportBtn.style.color = "#fca5a5";
       downloadReportBtn.innerHTML = "🔒 Download Report (Premium Only)";
-      downloadReportBtn.title = "Non-premium users cannot download reports. Increase expenses to become Rank 1!";
+      downloadReportBtn.title = "Only users with premium membership can download reports.";
     }
   }
 }
@@ -167,6 +185,8 @@ function calculateReport() {
       return isSameWeek(itemDate, targetDate);
     } else if (currentFilter === "monthly") {
       return isSameMonth(itemDate, targetDate);
+    } else if (currentFilter === "yearly") {
+      return itemDate.getFullYear() === targetYear;
     }
     return true;
   });
@@ -195,9 +215,15 @@ function calculateReport() {
 
   // 3. Render Expense & Income Table
   if (tableFilterEyebrow) {
-    tableFilterEyebrow.textContent = currentFilter === "daily" 
-      ? `Daily Activity (${targetDate.toLocaleDateString()})` 
-      : (currentFilter === "weekly" ? `Weekly Activity (${targetDate.toLocaleDateString()})` : `Monthly Activity (${targetDate.toLocaleString('default', { month: 'long', year: 'numeric' })})`);
+    if (currentFilter === "daily") {
+      tableFilterEyebrow.textContent = `Daily Activity (${targetDate.toLocaleDateString()})`;
+    } else if (currentFilter === "weekly") {
+      tableFilterEyebrow.textContent = `Weekly Activity (${targetDate.toLocaleDateString()})`;
+    } else if (currentFilter === "monthly") {
+      tableFilterEyebrow.textContent = `Monthly Activity (${targetDate.toLocaleString('default', { month: 'long', year: 'numeric' })})`;
+    } else if (currentFilter === "yearly") {
+      tableFilterEyebrow.textContent = `Yearly Activity (Year ${targetYear})`;
+    }
   }
   if (tableRecordCount) tableRecordCount.textContent = `${displayedTransactions.length} Transactions`;
 
@@ -304,7 +330,9 @@ if (btnDaily) {
     btnDaily.classList.add("active");
     if (btnWeekly) btnWeekly.classList.remove("active");
     if (btnMonthly) btnMonthly.classList.remove("active");
+    if (btnYearly) btnYearly.classList.remove("active");
     calculateReport();
+    updatePremiumUI();
   });
 }
 
@@ -314,7 +342,9 @@ if (btnWeekly) {
     btnWeekly.classList.add("active");
     if (btnDaily) btnDaily.classList.remove("active");
     if (btnMonthly) btnMonthly.classList.remove("active");
+    if (btnYearly) btnYearly.classList.remove("active");
     calculateReport();
+    updatePremiumUI();
   });
 }
 
@@ -324,7 +354,21 @@ if (btnMonthly) {
     btnMonthly.classList.add("active");
     if (btnDaily) btnDaily.classList.remove("active");
     if (btnWeekly) btnWeekly.classList.remove("active");
+    if (btnYearly) btnYearly.classList.remove("active");
     calculateReport();
+    updatePremiumUI();
+  });
+}
+
+if (btnYearly) {
+  btnYearly.addEventListener("click", () => {
+    currentFilter = "yearly";
+    btnYearly.classList.add("active");
+    if (btnDaily) btnDaily.classList.remove("active");
+    if (btnWeekly) btnWeekly.classList.remove("active");
+    if (btnMonthly) btnMonthly.classList.remove("active");
+    calculateReport();
+    updatePremiumUI();
   });
 }
 
@@ -412,53 +456,60 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// FEATURE 4: Download Report Button (JSON download for Premium users)
+// FEATURE 4: Download Report Button (Separate Daily, Weekly, Monthly, Yearly PDF downloads for Premium users)
 if (downloadReportBtn) {
-  downloadReportBtn.addEventListener("click", () => {
+  downloadReportBtn.addEventListener("click", async () => {
     const isPremium = getIsPremium();
+    const targetFileName = getReportFileName(currentFilter);
+
     if (!isPremium) {
-      const topName = cachedTopSpender?.name || "prem9771190912";
-      const topAmt = cachedTopSpender?.totalExpense || 30300;
-      const userAmt = loggedInUser?.totalExpense || 0;
-      openPremiumLockModal(topName, topAmt, userAmt);
+      showToast("Access Restricted", "Only users with premium membership can download reports.", true);
+      openPremiumLockModal();
       return;
     }
 
-    const reportExport = {
-      title: "SpendWise AI Financial Report",
-      user: {
-        name: loggedInUser?.name || "User",
-        email: loggedInUser?.email || ""
-      },
-      generatedAt: new Date().toISOString(),
-      reportType: currentFilter,
-      selectedDate: selectedDateStr,
-      metrics: {
-        totalIncome: summaryIncome?.textContent || "₹0.00",
-        totalExpense: summaryExpense?.textContent || "₹0.00",
-        savings: summarySavings?.textContent || "₹0.00"
-      },
-      displayedTransactionsCount: displayedTransactions.length,
-      transactions: displayedTransactions.map(item => ({
-        id: item.id,
-        date: new Date(item.createdAt || item.date || Date.now()).toISOString().slice(0, 10),
-        description: item.description,
-        category: item.category || "General",
-        type: isIncome(item) ? "Income" : "Expense",
-        amount: Number(item.amount) || 0
-      })),
-      yearlySummary: currentYearlySummary
-    };
+    const prevHtml = downloadReportBtn.innerHTML;
+    downloadReportBtn.disabled = true;
+    downloadReportBtn.innerHTML = "⏳ Downloading PDF...";
 
-    const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportExport, null, 2));
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", jsonString);
-    downloadAnchor.setAttribute("download", `expense_report_${currentFilter}_${selectedDateStr}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    try {
+      const res = await fetch(`/api/download-report?period=${currentFilter}&date=${selectedDateStr}&format=pdf`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Accept": "application/pdf"
+        }
+      });
 
-    showToast("Report Downloaded", "Your financial JSON export is ready.");
+      if (res.status === 403) {
+        showToast("Premium Only", "Only users with premium membership can download reports.", true);
+        openPremiumLockModal();
+        return;
+      }
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || "Failed to download PDF report.");
+      }
+
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.href = blobUrl;
+      downloadAnchor.download = targetFileName;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      window.URL.revokeObjectURL(blobUrl);
+
+      showToast("Report Downloaded", `${targetFileName} has been downloaded successfully.`);
+    } catch (err) {
+      console.error("Download error:", err);
+      showToast("Download Failed", err.message, true);
+    } finally {
+      downloadReportBtn.disabled = false;
+      updatePremiumUI();
+    }
   });
 }
 
@@ -481,39 +532,27 @@ if (saveNotesBtn && notesInput) {
 async function loadData() {
   updatePremiumUI();
 
-  // Check if current user is top spender on leaderboard
+  // 1. Sync genuine premium status from backend user profile
   try {
-    const leaderRes = await fetch("/api/leaderboard?public=true", {
+    const meRes = await fetch("/api/auth/me", {
       headers: { "Authorization": `Bearer ${authToken}` }
     });
-    if (leaderRes.ok) {
-      const leaderData = await leaderRes.json();
-      const list = Array.isArray(leaderData) ? leaderData : (leaderData.leaderboard || []);
-      if (list.length > 0 && Number(list[0].totalExpense || 0) > 0) {
-        const topSpender = list[0];
-        cachedTopSpender = topSpender;
-        const currentName = loggedInUser?.name?.trim().toLowerCase();
-        const currentEmail = loggedInUser?.email?.trim().toLowerCase();
-        const currentId = String(loggedInUser?.id || loggedInUser?._id || "");
-        const isCurrentTopSpender = (
-          (currentEmail && String(topSpender.email || "").trim().toLowerCase() === currentEmail) ||
-          (currentId && String(topSpender.id) === currentId) ||
-          (currentName && String(topSpender.name || "").trim().toLowerCase() === currentName)
-        );
-
-        if (isCurrentTopSpender) {
-          localStorage.setItem("ispremiumuser", "true");
-        } else {
-          localStorage.setItem("ispremiumuser", "false");
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      if (meData.user) {
+        const isPrem = Boolean(meData.user.isPremium || meData.user.ispremiumuser);
+        localStorage.setItem("ispremiumuser", isPrem ? "true" : "false");
+        if (loggedInUser) {
+          loggedInUser.isPremium = isPrem;
+          loggedInUser.ispremiumuser = isPrem;
         }
-        updatePremiumUI();
-      } else {
-        localStorage.setItem("ispremiumuser", "false");
-        updatePremiumUI();
       }
     }
   } catch (_) {}
 
+  updatePremiumUI();
+
+  // 2. Fetch logged-in user expenses
   try {
     const res = await fetch("/api/expenses", {
       headers: { "Authorization": `Bearer ${authToken}` }
