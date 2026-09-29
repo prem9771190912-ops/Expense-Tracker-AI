@@ -173,13 +173,41 @@ async function getLeaderboard(options = {}) {
     .sort({ totalExpense: -1, createdAt: 1 })
     .lean();
 
-  // Exclude automated test accounts (@example.com) unless explicitly queried or matching current user
+  const excludedKeywords = ["nitin", "anish", "ansh", "ankit", "anki", "fakeprem", "leaderboard tester", "forgot tester"];
+  const realPremEmail = "prem9771190912@gmail.com";
+
+  // Filter leaderboard: keep real Prem (prem9771190912), Mohan & genuine members, exclude nitin/ansh/ankit and fake prem accounts
   let list = users.filter((u) => {
-    const email = String(u.email || "").toLowerCase();
-    if (options.currentUser && options.currentUser.email && email === String(options.currentUser.email).toLowerCase()) {
-      return true;
+    const email = String(u.email || "").toLowerCase().trim();
+    const name = String(u.name || "").toLowerCase().trim();
+
+    // Check if this is the currently logged-in user
+    const isCurrent = Boolean(
+      options.currentUser && (
+        (options.currentUser.email && email === String(options.currentUser.email).toLowerCase().trim()) ||
+        (options.currentUser.id && String(u._id) === String(options.currentUser.id)) ||
+        (options.currentUser.name && name === String(options.currentUser.name).toLowerCase().trim())
+      )
+    );
+
+    // If it's the currently logged-in user, always keep them
+    if (isCurrent) return true;
+
+    // Filter out internal automated tests (@example.com)
+    if (email.endsWith("@example.com")) return false;
+
+    // Exclude requested dummy names: nitin, ansh/anish, anki/ankit
+    if (excludedKeywords.some((keyword) => name.includes(keyword) || email.includes(keyword))) {
+      return false;
     }
-    return !email.endsWith("@example.com");
+
+    // Only allow the real Prem (prem9771190912@gmail.com) among prem names
+    const isPremName = name.startsWith("prem") || email.startsWith("prem") || name === "pk" || email === "prem5949@gmail.com";
+    if (isPremName) {
+      return email === realPremEmail || name === "prem9771190912";
+    }
+
+    return true;
   });
 
   list.sort((a, b) => {
