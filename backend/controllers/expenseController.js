@@ -2,6 +2,7 @@ const db = require("../utils/db");
 const Expense = require("../models/Expense");
 const { categorizeExpense } = require("../services/aiService");
 const { generateReportPDF } = require("../services/pdfReportService");
+const { generateReportCSV } = require("../services/csvReportService");
 
 const CATEGORIES = new Set([
   "Food",
@@ -179,7 +180,7 @@ exports.downloadReport = async (req, res) => {
     const validMonth = Number.isInteger(monthPart) && monthPart >= 1 && monthPart <= 12 ? monthPart : (new Date().getMonth() + 1);
     const validDay = Number.isInteger(dayPart) && dayPart >= 1 && dayPart <= 31 ? dayPart : new Date().getDate();
 
-    let startDate, endDate, periodLabel, fileName, dateRange;
+    let startDate, endDate, periodLabel, baseFileName, dateRange;
 
     if (period === "weekly") {
       const refDate = new Date(validYear, validMonth - 1, validDay, 0, 0, 0, 0);
@@ -193,14 +194,14 @@ exports.downloadReport = async (req, res) => {
       endDate.setHours(23, 59, 59, 999);
 
       periodLabel = "Weekly";
-      fileName = "Weekly_Report.pdf";
+      baseFileName = "Weekly_Report";
       dateRange = `${startDate.toLocaleDateString("en-IN")} to ${endDate.toLocaleDateString("en-IN")}`;
     } else if (period === "monthly") {
       startDate = new Date(validYear, validMonth - 1, 1, 0, 0, 0, 0);
       endDate = new Date(validYear, validMonth, 0, 23, 59, 59, 999);
 
       periodLabel = "Monthly";
-      fileName = "Monthly_Report.pdf";
+      baseFileName = "Monthly_Report";
       const monthName = startDate.toLocaleString("en-US", { month: "long" });
       dateRange = `${monthName} ${validYear} (${startDate.toLocaleDateString("en-IN")} to ${endDate.toLocaleDateString("en-IN")})`;
     } else if (period === "yearly") {
@@ -208,7 +209,7 @@ exports.downloadReport = async (req, res) => {
       endDate = new Date(validYear, 11, 31, 23, 59, 59, 999);
 
       periodLabel = "Yearly";
-      fileName = "Yearly_Report.pdf";
+      baseFileName = "Yearly_Report";
       dateRange = `Year ${validYear} (01/01/${validYear} to 31/12/${validYear})`;
     } else {
       // Default: daily
@@ -216,9 +217,17 @@ exports.downloadReport = async (req, res) => {
       endDate = new Date(validYear, validMonth - 1, validDay, 23, 59, 59, 999);
 
       periodLabel = "Daily";
-      fileName = "Daily_Report.pdf";
+      baseFileName = "Daily_Report";
       dateRange = `${String(validDay).padStart(2, "0")}/${String(validMonth).padStart(2, "0")}/${validYear}`;
     }
+
+    const format = String(req.query.format || "").trim().toLowerCase();
+    const isCsv = format === "csv" || String(req.headers.accept || "").includes("text/csv");
+    const isPdf = format === "pdf" || String(req.headers.accept || "").includes("application/pdf");
+
+    const csvFileName = `${baseFileName}.csv`;
+    const pdfFileName = `${baseFileName}.pdf`;
+    const fileName = isCsv ? csvFileName : (isPdf ? pdfFileName : (format === "csv" ? csvFileName : pdfFileName));
 
     // Requirement 3: Reports must contain ONLY the logged-in user's expenses (not leaderboard users).
     // Requirement 6: Filter transactions using JWT user id/email.
@@ -265,12 +274,19 @@ exports.downloadReport = async (req, res) => {
       transactions
     };
 
+    // If client requested CSV download:
+    if (isCsv) {
+      const csvData = generateReportCSV(reportData);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${csvFileName}"`);
+      return res.send(csvData);
+    }
+
     // If client requested PDF download:
-    const wantsPdf = req.query.format === "pdf" || String(req.headers.accept || "").includes("application/pdf");
-    if (wantsPdf) {
+    if (isPdf) {
       const pdfBuffer = await generateReportPDF(reportData);
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${pdfFileName}"`);
       res.setHeader("Content-Length", pdfBuffer.length);
       return res.send(pdfBuffer);
     }
@@ -285,7 +301,9 @@ exports.downloadReport = async (req, res) => {
       },
       period: periodLabel,
       dateRange,
-      fileName,
+      fileName: format === "csv" ? csvFileName : pdfFileName,
+      csvFileName,
+      pdfFileName,
       metrics: {
         totalIncome,
         totalExpense,

@@ -199,6 +199,38 @@ async function runReportTests() {
       console.log(`   ✓ ${expectedFiles[p]} downloaded (${pdfRes.body.length} bytes, PDF valid)`);
     }
 
+    // 7b. Test CSV Downloads for All 4 Periods
+    console.log("[7b] Testing Separate CSV Downloads (format=csv)");
+    const expectedCsvFiles = {
+      daily: "Daily_Report.csv",
+      weekly: "Weekly_Report.csv",
+      monthly: "Monthly_Report.csv",
+      yearly: "Yearly_Report.csv"
+    };
+
+    for (const p of periods) {
+      const csvRes = await request(`/api/download-report?period=${p}&date=${todayStr}&format=csv`, {
+        headers: authHeader
+      });
+      assert.strictEqual(csvRes.status, 200, `CSV request for ${p} should return 200`);
+      assert.ok(
+        (csvRes.headers.get("content-type") || "").includes("text/csv"),
+        `Content-Type must be text/csv for ${p}`
+      );
+      const disposition = csvRes.headers.get("content-disposition") || "";
+      assert.ok(
+        disposition.includes(expectedCsvFiles[p]),
+        `Content-Disposition header must specify ${expectedCsvFiles[p]}`
+      );
+      const csvText = typeof csvRes.body === "string" ? csvRes.body : csvRes.body.toString("utf8");
+      assert.ok(csvText.includes("User Name"), "CSV must include User Name");
+      assert.ok(csvText.includes("Total Income"), "CSV must include Total Income");
+      assert.ok(csvText.includes("Total Expense"), "CSV must include Total Expense");
+      assert.ok(csvText.includes("Savings"), "CSV must include Savings");
+      assert.ok(csvText.includes('"Date"') && csvText.includes('"Description"') && csvText.includes('"Category"') && csvText.includes('"Amount'), "CSV must include transaction table headers");
+      console.log(`   ✓ ${expectedCsvFiles[p]} downloaded (${csvText.length} chars, CSV valid)`);
+    }
+
     // 8. Test User Expense Isolation (Only logged-in user's expenses, not other users)
     console.log("[8] Testing User Expense Isolation");
     const anotherEmail = `other_user_${timestamp}@example.com`;

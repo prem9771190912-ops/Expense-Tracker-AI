@@ -28,13 +28,14 @@ function getIsPremium() {
   );
 }
 
-function getReportFileName(filter) {
+function getReportFileName(filter, format = "csv") {
+  const ext = format === "pdf" ? "pdf" : "csv";
   switch (String(filter || "").toLowerCase()) {
-    case "weekly": return "Weekly_Report.pdf";
-    case "monthly": return "Monthly_Report.pdf";
-    case "yearly": return "Yearly_Report.pdf";
+    case "weekly": return `Weekly_Report.${ext}`;
+    case "monthly": return `Monthly_Report.${ext}`;
+    case "yearly": return `Yearly_Report.${ext}`;
     case "daily":
-    default: return "Daily_Report.pdf";
+    default: return `Daily_Report.${ext}`;
   }
 }
 
@@ -66,6 +67,7 @@ let currentYearlySummary = [];
 
 const premiumHeadline = document.getElementById("premiumHeadline");
 const downloadReportBtn = document.getElementById("downloadReportBtn");
+const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 const btnDaily = document.getElementById("btnDaily");
 const btnWeekly = document.getElementById("btnWeekly");
 const btnMonthly = document.getElementById("btnMonthly");
@@ -100,7 +102,8 @@ const notesStatus = document.getElementById("notesStatus");
 
 function updatePremiumUI() {
   const isPremium = getIsPremium();
-  const currentFileName = getReportFileName(currentFilter);
+  const currentCsvFileName = getReportFileName(currentFilter, "csv");
+  const currentPdfFileName = getReportFileName(currentFilter, "pdf");
 
   if (isPremium) {
     if (premiumHeadline) {
@@ -117,8 +120,14 @@ function updatePremiumUI() {
       downloadReportBtn.style.background = "linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%)";
       downloadReportBtn.style.borderColor = "rgba(16, 185, 129, 0.4)";
       downloadReportBtn.style.color = "var(--emerald-text)";
-      downloadReportBtn.innerHTML = `📥 Download Report (${currentFileName})`;
-      downloadReportBtn.title = `Download ${currentFileName}`;
+      downloadReportBtn.innerHTML = `📥 Download Report (${currentCsvFileName})`;
+      downloadReportBtn.title = `Download ${currentCsvFileName}`;
+    }
+    if (downloadPdfBtn) {
+      downloadPdfBtn.disabled = false;
+      downloadPdfBtn.style.cursor = "pointer";
+      downloadPdfBtn.style.opacity = "1";
+      downloadPdfBtn.title = `Download ${currentPdfFileName}`;
     }
   } else {
     if (premiumHeadline) {
@@ -133,6 +142,12 @@ function updatePremiumUI() {
       downloadReportBtn.style.color = "#fca5a5";
       downloadReportBtn.innerHTML = "🔒 Download Report (Premium Only)";
       downloadReportBtn.title = "Only users with premium membership can download reports.";
+    }
+    if (downloadPdfBtn) {
+      downloadPdfBtn.disabled = false;
+      downloadPdfBtn.style.cursor = "not-allowed";
+      downloadPdfBtn.style.opacity = "0.6";
+      downloadPdfBtn.title = "Only users with premium membership can download reports.";
     }
   }
 }
@@ -456,61 +471,72 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// FEATURE 4: Download Report Button (Separate Daily, Weekly, Monthly, Yearly PDF downloads for Premium users)
-if (downloadReportBtn) {
-  downloadReportBtn.addEventListener("click", async () => {
-    const isPremium = getIsPremium();
-    const targetFileName = getReportFileName(currentFilter);
+// FEATURE 4: Download Report Functions (Separate Daily, Weekly, Monthly, Yearly CSV & PDF downloads for Premium users)
+async function executeReportDownload(format = "csv") {
+  const isPremium = getIsPremium();
+  const targetFileName = getReportFileName(currentFilter, format);
 
-    if (!isPremium) {
-      showToast("Access Restricted", "Only users with premium membership can download reports.", true);
+  if (!isPremium) {
+    showToast("Access Restricted", "Only users with premium membership can download reports.", true);
+    openPremiumLockModal();
+    return;
+  }
+
+  const activeBtn = format === "pdf" ? downloadPdfBtn : downloadReportBtn;
+  if (activeBtn) {
+    activeBtn.disabled = true;
+    activeBtn.innerHTML = format === "pdf" ? "⏳ PDF..." : "⏳ CSV...";
+  }
+
+  try {
+    const mimeType = format === "pdf" ? "application/pdf" : "text/csv";
+    const res = await fetch(`/api/download-report?period=${currentFilter}&date=${selectedDateStr}&format=${format}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${authToken}`,
+        "Accept": mimeType
+      }
+    });
+
+    if (res.status === 403) {
+      showToast("Premium Only", "Only users with premium membership can download reports.", true);
       openPremiumLockModal();
       return;
     }
 
-    const prevHtml = downloadReportBtn.innerHTML;
-    downloadReportBtn.disabled = true;
-    downloadReportBtn.innerHTML = "⏳ Downloading PDF...";
-
-    try {
-      const res = await fetch(`/api/download-report?period=${currentFilter}&date=${selectedDateStr}&format=pdf`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${authToken}`,
-          "Accept": "application/pdf"
-        }
-      });
-
-      if (res.status === 403) {
-        showToast("Premium Only", "Only users with premium membership can download reports.", true);
-        openPremiumLockModal();
-        return;
-      }
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || "Failed to download PDF report.");
-      }
-
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const downloadAnchor = document.createElement("a");
-      downloadAnchor.href = blobUrl;
-      downloadAnchor.download = targetFileName;
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-      window.URL.revokeObjectURL(blobUrl);
-
-      showToast("Report Downloaded", `${targetFileName} has been downloaded successfully.`);
-    } catch (err) {
-      console.error("Download error:", err);
-      showToast("Download Failed", err.message, true);
-    } finally {
-      downloadReportBtn.disabled = false;
-      updatePremiumUI();
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || `Failed to download ${format.toUpperCase()} report.`);
     }
-  });
+
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.href = blobUrl;
+    downloadAnchor.download = targetFileName;
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    window.URL.revokeObjectURL(blobUrl);
+
+    showToast("Report Downloaded", `${targetFileName} has been downloaded successfully.`);
+  } catch (err) {
+    console.error("Download error:", err);
+    showToast("Download Failed", err.message, true);
+  } finally {
+    if (activeBtn) {
+      activeBtn.disabled = false;
+    }
+    updatePremiumUI();
+  }
+}
+
+if (downloadReportBtn) {
+  downloadReportBtn.addEventListener("click", () => executeReportDownload("csv"));
+}
+
+if (downloadPdfBtn) {
+  downloadPdfBtn.addEventListener("click", () => executeReportDownload("pdf"));
 }
 
 // Notes Section Storage
