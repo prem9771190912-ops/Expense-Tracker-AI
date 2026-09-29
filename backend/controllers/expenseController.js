@@ -49,7 +49,8 @@ exports.createExpense = async (req, res) => {
     const numericAmount = Number(amount);
 
     const trimmedDescription = String(description || "").trim();
-    const requestedCategory = category ? String(category).trim() : "Other";
+    const rawCategory = category ? String(category).trim() : "";
+    const requestedCategory = rawCategory && CATEGORIES.has(rawCategory) ? rawCategory : "";
 
     if (
       !email ||
@@ -57,21 +58,25 @@ exports.createExpense = async (req, res) => {
       numericAmount <= 0 ||
       numericAmount > 1000000000 ||
       !trimmedDescription ||
-      trimmedDescription.length > 500 ||
-      !CATEGORIES.has(requestedCategory)
+      trimmedDescription.length > 500
     ) {
       return res.status(400).json({ success: false, message: "Valid amount and description are required." });
     }
 
-    let finalCategory = requestedCategory;
-    let finalSource = categorySource || (category ? "user" : "fallback");
-    let aiSuggested = false;
+    let finalCategory = requestedCategory || "Other";
+    let finalSource = categorySource || (requestedCategory && requestedCategory !== "Other" ? "user" : "ai");
+    let aiSuggested = finalSource === "ai";
 
-    if (!category) {
+    // If category is not specified, or is "Other", or categorySource is "ai", run AI classification
+    if (!requestedCategory || requestedCategory === "Other" || finalSource === "ai") {
       const suggestion = await categorizeExpense(trimmedDescription);
-      finalCategory = suggestion.category;
-      finalSource = suggestion.source;
-      aiSuggested = suggestion.source === "ai";
+      if (suggestion && suggestion.category && suggestion.category !== "Other") {
+        finalCategory = suggestion.category;
+        finalSource = suggestion.source || "ai";
+        aiSuggested = true;
+      } else if (!requestedCategory) {
+        finalCategory = "Other";
+      }
     }
 
     const created = await db.addExpense({

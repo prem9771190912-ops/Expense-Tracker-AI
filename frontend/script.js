@@ -477,7 +477,23 @@ async function load(targetPage = currentPage) {
 }
 
 let aiSuggestionTimer;
-let lastAutoCategory = "";
+let currentAiCategory = "";
+let userManuallyChangedCategory = false;
+
+if (category) {
+  category.addEventListener("change", () => {
+    // If the user manually picks a category, mark as manual choice
+    if (category.value && category.value !== currentAiCategory) {
+      userManuallyChangedCategory = true;
+    } else if (!category.value) {
+      // Switched back to "AI Auto-Detect"
+      userManuallyChangedCategory = false;
+      if (currentAiCategory) {
+        category.value = currentAiCategory;
+      }
+    }
+  });
+}
 
 if (description && aiSuggestion) {
   description.addEventListener("input", () => {
@@ -486,7 +502,8 @@ if (description && aiSuggestion) {
     if (!val) {
       aiSuggestion.style.display = "none";
       aiSuggestion.innerHTML = "";
-      if (category && category.value === lastAutoCategory) {
+      currentAiCategory = "";
+      if (!userManuallyChangedCategory && category) {
         category.value = "";
       }
       return;
@@ -503,16 +520,19 @@ if (description && aiSuggestion) {
           body: JSON.stringify({ description: val })
         });
         if (res && res.category) {
-          lastAutoCategory = res.category;
-          aiSuggestion.innerHTML = `✨ AI Suggestion: <strong>${esc(res.category)}</strong> <span style="font-size: 0.8rem; opacity: 0.7;">(${esc(res.source || "ai")})</span>`;
-          if (category && (!category.value || category.value === lastAutoCategory)) {
+          currentAiCategory = res.category;
+          aiSuggestion.innerHTML = `✨ AI Suggestion: <strong>${esc(res.category)}</strong> <span style="font-size: 0.8rem; opacity: 0.7;">(${esc(res.source || "ai")})</span> <span style="font-size: 0.78rem; opacity: 0.9; margin-left: 8px;">✓ Auto-Selected</span>`;
+          
+          // Auto-update category dropdown if user hasn't deliberately chosen another category
+          if (category && (!userManuallyChangedCategory || !category.value || category.value === "Other")) {
             category.value = res.category;
+            userManuallyChangedCategory = false; // Reset to reflect active AI match
           }
         }
       } catch (err) {
         aiSuggestion.innerHTML = '<span style="color: var(--text-secondary);">✦ AI ready (auto-classifies on add)</span>';
       }
-    }, 350);
+    }, 250);
   });
 }
 
@@ -530,11 +550,27 @@ if (form) {
     if (submitButton) submitButton.disabled = true;
     msg.textContent = "Adding expense...";
 
+    // Determine target category:
+    // If user explicitly picked a non-empty category different from AI, respect it
+    let targetCat = "";
+    let targetSource = "ai";
+
+    if (userManuallyChangedCategory && category && category.value && category.value !== currentAiCategory) {
+      targetCat = category.value;
+      targetSource = "user";
+    } else {
+      // Prioritize AI suggestion
+      targetCat = currentAiCategory || (category ? category.value : "") || "Other";
+      targetSource = (currentAiCategory && targetCat === currentAiCategory) ? "ai" : (targetCat === "Other" ? "fallback" : "user");
+    }
+
     const body = {
       amount: numericAmount,
-      description: textDescription
+      description: textDescription,
+      category: targetCat,
+      categorySource: targetSource,
+      aiSuggested: targetSource === "ai"
     };
-    if (category && category.value) body.category = category.value;
 
     try {
       const x = await request("/api/expenses", {
@@ -545,11 +581,13 @@ if (form) {
 
       msg.textContent = x.category ? `Categorized as: ${x.category}` : "Expense added.";
       form.reset();
+      userManuallyChangedCategory = false;
+      currentAiCategory = "";
+      if (category) category.value = "";
       if (aiSuggestion) {
         aiSuggestion.style.display = "none";
         aiSuggestion.innerHTML = "";
       }
-      lastAutoCategory = "";
       await load(1);
     } catch (error) {
       msg.textContent = error.message;
