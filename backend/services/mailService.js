@@ -14,7 +14,7 @@ try {
  * @param {string} options.resetLink - Password reset URL
  * @returns {Promise<Object>}
  */
-async function sendMail({ to, resetLink }) {
+async function sendMail({ to, resetLink, networkResetLink, publicResetLink }) {
   const apiKey = process.env.SENDINBLUE_API_KEY || process.env.BREVO_API_KEY || process.env.SIB_API_KEY;
   const senderEmail = process.env.SENDINBLUE_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || process.env.GMAIL_USER || "support@expensetracker.com";
   const senderName = process.env.SENDINBLUE_SENDER_NAME || "Expense Tracker";
@@ -22,33 +22,53 @@ async function sendMail({ to, resetLink }) {
   const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER || process.env.SMTP_USER;
   const emailPass = process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
 
-  const emailSubject = "Reset Your Password - Expense Tracker";
+  const primaryLink = publicResetLink || resetLink;
+
+  const emailSubject = "Reset Your Password - SpendWise AI Expense Tracker";
   const htmlContent = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0c1117; color: #f8fafc; padding: 24px; margin: 0; }
-        .card { max-width: 520px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 32px; border: 1px solid #334155; }
-        .brand { font-size: 20px; font-weight: 700; color: #10b981; margin-bottom: 20px; }
-        h2 { font-size: 20px; margin-top: 0; color: #f8fafc; }
-        p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
-        .btn { display: inline-block; background: #10b981; color: #ffffff !important; font-weight: 600; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin: 20px 0; }
-        .link-box { background: rgba(0,0,0,0.25); padding: 12px; border-radius: 6px; font-family: monospace; color: #fbbf24; word-break: break-all; font-size: 13px; }
-        .footer { font-size: 12px; color: #64748b; margin-top: 24px; border-top: 1px solid #334155; padding-top: 16px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0c1117; color: #f8fafc; padding: 20px; margin: 0; }
+        .card { max-width: 520px; margin: 0 auto; background: #161f2e; border-radius: 16px; padding: 32px 28px; border: 1px solid #334155; }
+        .brand { font-size: 13px; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        h2 { font-size: 22px; margin-top: 0; color: #f8fafc; font-weight: 700; }
+        p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 8px 0; }
+        .btn-wrap { text-align: center; margin: 24px 0; }
+        .btn { display: inline-block; background: #10b981; color: #ffffff !important; font-weight: 700; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 15px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); }
+        .section-title { font-size: 13px; font-weight: 600; color: #cbd5e1; margin-top: 20px; margin-bottom: 6px; }
+        .link-box { background: #090d13; padding: 12px 14px; border-radius: 8px; font-family: monospace; font-size: 12px; border: 1px solid #233147; word-break: break-all; }
+        .footer { font-size: 12px; color: #64748b; margin-top: 24px; border-top: 1px solid #233147; padding-top: 16px; text-align: center; }
       </style>
     </head>
     <body>
       <div class="card">
         <div class="brand">✦ SpendWise AI — Expense Tracker</div>
         <h2>Password Reset Request</h2>
-        <p>You requested a password reset for your Expense Tracker account. Click the button below to set a new password:</p>
-        <p><a href="${resetLink}" class="btn" target="_blank">Reset Password</a></p>
-        <p>Or open this link directly in your browser:</p>
-        <div class="link-box">${resetLink}</div>
-        <p>This reset link will expire shortly (valid for 15 minutes).</p>
-        <div class="footer">If you did not make this request, you can safely ignore this email.</div>
+        <p>You requested a password reset for your SpendWise AI account. Click the button below to choose a new password:</p>
+        
+        <div class="btn-wrap">
+          <a href="${primaryLink}" class="btn" target="_blank">Reset Password Now</a>
+        </div>
+
+        <div class="section-title">📱 Opening on a Mobile Phone or Remote Device:</div>
+        <div class="link-box"><a href="${publicResetLink || primaryLink}" style="color: #38bdf8; text-decoration: none;">${publicResetLink || primaryLink}</a></div>
+
+        ${resetLink ? `
+        <div class="section-title">💻 Opening on the Local Host Computer:</div>
+        <div class="link-box"><a href="${resetLink}" style="color: #6ee7b7; text-decoration: none;">${resetLink}</a></div>
+        ` : ""}
+
+        ${networkResetLink ? `
+        <div class="section-title">📶 Opening on the Same Wi-Fi Network:</div>
+        <div class="link-box"><a href="${networkResetLink}" style="color: #93c5fd; text-decoration: none;">${networkResetLink}</a></div>
+        ` : ""}
+
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 18px;">⏳ This reset link will expire in <strong>15 minutes</strong>.</p>
+        <div class="footer">If you did not request this password reset, please ignore this email. Your password will remain unchanged.</div>
       </div>
     </body>
     </html>

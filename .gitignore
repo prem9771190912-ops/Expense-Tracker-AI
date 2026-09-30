@@ -17,3 +17,5 @@ frontend/dist/
 
 .vercel
 .env*
+cloudflared.exe
+tunnel.log
