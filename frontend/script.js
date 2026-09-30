@@ -227,24 +227,24 @@ function renderLeaderboard(users) {
 
     let statusBadge = "";
     if (isUserPaidPremium && isHighestExpense) {
-      statusBadge = `<span style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(202, 138, 4, 0.45) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.6); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 10px rgba(234, 179, 8, 0.25);">👑 Premium Member (#1)</span>`;
+      statusBadge = `<span style="background: rgba(234, 179, 8, 0.12); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.3); padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">👑 Premium (#1)</span>`;
     } else if (isUserPaidPremium) {
-      statusBadge = `<span style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(202, 138, 4, 0.35) 100%); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.5); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 8px rgba(234, 179, 8, 0.2);">⭐ Premium Member</span>`;
+      statusBadge = `<span style="background: rgba(234, 179, 8, 0.1); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.25); padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">⭐ Premium</span>`;
     } else if (isHighestExpense) {
-      statusBadge = `<span style="background: rgba(234, 179, 8, 0.15); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">👑 Rank Leader</span>`;
+      statusBadge = `<span style="background: rgba(234, 179, 8, 0.1); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.25); padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">👑 Top Spender</span>`;
     } else {
-      statusBadge = `<span style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">Standard Member</span>`;
+      statusBadge = `<span style="background: rgba(255, 255, 255, 0.04); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.08); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 500;">Member</span>`;
     }
 
     const userLabel = isThisCurrentUser
-      ? `<strong style="color: var(--emerald-text); font-size: 0.95rem;">${esc(u.name || "User")}</strong> <span style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;">YOU</span>`
-      : `<span style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600;">${esc(u.name || "User")}</span>`;
+      ? `<strong style="color: var(--emerald-text); font-size: 0.95rem;">${esc(u.name || "User")}</strong> <span style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; font-weight: 600;">YOU</span>`
+      : `<span style="color: var(--text-primary); font-size: 0.95rem; font-weight: 500;">${esc(u.name || "User")}</span>`;
 
     const rowBackground = isHighestExpense
-      ? 'background: rgba(234, 179, 8, 0.08); border-left: 3px solid #fde047;'
+      ? 'background: rgba(234, 179, 8, 0.04);'
       : (isThisCurrentUser
-        ? 'background: rgba(16, 185, 129, 0.06); border-left: 3px solid #10b981;'
-        : (isUserPaidPremium ? 'background: rgba(234, 179, 8, 0.03);' : ''));
+        ? 'background: rgba(16, 185, 129, 0.04);'
+        : (isUserPaidPremium ? 'background: rgba(234, 179, 8, 0.02);' : ''));
 
     return `
       <tr style="${rowBackground}">
