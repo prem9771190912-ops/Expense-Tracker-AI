@@ -224,9 +224,12 @@
                         <div class="cf-upi-options">
                             <label class="cf-upi-option">
                                 <input type="radio" name="cfUpiApp" checked>
-                                <span>UPI App (Google Pay / PhonePe / Paytm)</span>
+                                <span>UPI ID / VPA</span>
                             </label>
-                            <input type="text" class="cf-input" value="success@cashfree" readonly style="margin-top: 8px; opacity: 0.85;">
+                            <input type="text" id="cfUpiInput" class="cf-input" value="success@cashfree" placeholder="e.g. mobile@upi or success@cashfree" style="margin-top: 8px;">
+                            <span style="font-size: 0.72rem; color: #9ca3af; margin-top: 4px; display: block;">
+                                💡 Tip: You can edit or use <code>success@cashfree</code> for instant sandbox approval.
+                            </span>
                         </div>
                     </div>
 
@@ -234,21 +237,25 @@
                     <div id="cfTabCard" class="cf-tab-pane" style="display: none;">
                         <div style="display: flex; flex-direction: column; gap: 10px;">
                             <div>
-                                <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Card Number</label>
-                                <input type="text" class="cf-input" value="4111 •••• •••• 1111 (Test Visa)" readonly>
+                                <label for="cfCardNumber" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Card Number</label>
+                                <input type="text" id="cfCardNumber" class="cf-input" placeholder="4111 2222 3333 4444" maxlength="19" value="4111 2222 3333 4444" autocomplete="cc-number">
+                            </div>
+                            <div>
+                                <label for="cfCardName" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Cardholder Name</label>
+                                <input type="text" id="cfCardName" class="cf-input" placeholder="Name on card" value="Prem Kumar" autocomplete="cc-name">
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                 <div>
-                                    <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Valid Thru</label>
-                                    <input type="text" class="cf-input" value="12/28" readonly>
+                                    <label for="cfCardExpiry" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Valid Thru (MM/YY)</label>
+                                    <input type="text" id="cfCardExpiry" class="cf-input" placeholder="12/28" maxlength="5" value="12/28" autocomplete="cc-exp">
                                 </div>
                                 <div>
-                                    <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">CVV</label>
-                                    <input type="password" class="cf-input" value="123" readonly>
+                                    <label for="cfCardCvv" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">CVV</label>
+                                    <input type="password" id="cfCardCvv" class="cf-input" placeholder="123" maxlength="4" value="123" autocomplete="cc-csc">
                                 </div>
                             </div>
                             <div style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px;">
-                                <span>✓</span> Sandbox test card pre-loaded
+                                <span>✓</span> Editable sandbox test card (Type your own card or keep test values)
                             </div>
                         </div>
                     </div>
@@ -296,7 +303,7 @@
         </div>
     </div>
 
-    <script type="module" src="script.js?v=2.4"></script>
+    <script type="module" src="script.js?v=2.5"></script>
 </body>
 
 </html>

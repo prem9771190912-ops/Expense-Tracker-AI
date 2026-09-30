@@ -787,6 +787,40 @@ function openCashfreeModal(orderId, paymentSessionId, amount) {
     };
   });
 
+  // Setup interactive card input formatters
+  const cardNumInput = document.getElementById("cfCardNumber");
+  const cardNameInput = document.getElementById("cfCardName");
+  const cardExpInput = document.getElementById("cfCardExpiry");
+  const cardCvvInput = document.getElementById("cfCardCvv");
+
+  if (cardNameInput && currentUser && currentUser.name) {
+    cardNameInput.value = currentUser.name;
+  }
+
+  if (cardNumInput) {
+    cardNumInput.oninput = (e) => {
+      let val = e.target.value.replace(/\D/g, "").substring(0, 16);
+      val = val.match(/.{1,4}/g)?.join(" ") || val;
+      e.target.value = val;
+    };
+  }
+
+  if (cardExpInput) {
+    cardExpInput.oninput = (e) => {
+      let val = e.target.value.replace(/\D/g, "").substring(0, 4);
+      if (val.length >= 2) {
+        val = val.substring(0, 2) + "/" + val.substring(2);
+      }
+      e.target.value = val;
+    };
+  }
+
+  if (cardCvvInput) {
+    cardCvvInput.oninput = (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "").substring(0, 4);
+    };
+  }
+
   // Default to UPI tab on each open
   switchTab("upi");
 
