@@ -219,6 +219,7 @@
                 </div>
                 
                 <div class="cf-tab-content">
+                    <!-- UPI Tab -->
                     <div id="cfTabUpi" class="cf-tab-pane">
                         <div class="cf-upi-options">
                             <label class="cf-upi-option">
@@ -226,6 +227,55 @@
                                 <span>UPI App (Google Pay / PhonePe / Paytm)</span>
                             </label>
                             <input type="text" class="cf-input" value="success@cashfree" readonly style="margin-top: 8px; opacity: 0.85;">
+                        </div>
+                    </div>
+
+                    <!-- Card Tab -->
+                    <div id="cfTabCard" class="cf-tab-pane" style="display: none;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div>
+                                <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Card Number</label>
+                                <input type="text" class="cf-input" value="4111 •••• •••• 1111 (Test Visa)" readonly>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Valid Thru</label>
+                                    <input type="text" class="cf-input" value="12/28" readonly>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">CVV</label>
+                                    <input type="password" class="cf-input" value="123" readonly>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px;">
+                                <span>✓</span> Sandbox test card pre-loaded
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Net Banking Tab -->
+                    <div id="cfTabNetbanking" class="cf-tab-pane" style="display: none;">
+                        <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 8px; display: block;">Select Popular Bank</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                <input type="radio" name="cfBank" value="HDFC" checked>
+                                <span>🏛️ HDFC Bank</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                <input type="radio" name="cfBank" value="SBI">
+                                <span>🏛️ SBI Bank</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                <input type="radio" name="cfBank" value="ICICI">
+                                <span>🏛️ ICICI Bank</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                <input type="radio" name="cfBank" value="AXIS">
+                                <span>🏛️ Axis Bank</span>
+                            </label>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px; margin-top: 6px;">
+                            <span>✓</span> Instant Sandbox authorization active
                         </div>
                     </div>
                 </div>
@@ -246,7 +296,7 @@
         </div>
     </div>
 
-    <script type="module" src="script.js?v=2.3"></script>
+    <script type="module" src="script.js?v=2.4"></script>
 </body>
 
 </html>

@@ -748,6 +748,48 @@ function openCashfreeModal(orderId, paymentSessionId, amount) {
     modalOrderId.textContent = `Order ID: ${orderId}`;
   }
 
+  // --- Payment Method Tabs (UPI, Card, Net Banking) ---
+  const tabs = modal.querySelectorAll(".cf-tab");
+  const panes = {
+    upi: document.getElementById("cfTabUpi"),
+    card: document.getElementById("cfTabCard"),
+    netbanking: document.getElementById("cfTabNetbanking")
+  };
+
+  const switchTab = (targetTab) => {
+    tabs.forEach((t) => {
+      const isCurrent = t.getAttribute("data-tab") === targetTab;
+      t.classList.toggle("active", isCurrent);
+    });
+
+    Object.keys(panes).forEach((key) => {
+      if (panes[key]) {
+        panes[key].style.display = key === targetTab ? "block" : "none";
+      }
+    });
+
+    if (paySuccessBtn) {
+      if (targetTab === "card") {
+        paySuccessBtn.innerHTML = "🔒 Pay ₹199.00 via Card (Simulate Success)";
+      } else if (targetTab === "netbanking") {
+        paySuccessBtn.innerHTML = "🔒 Pay ₹199.00 via NetBanking (Simulate Success)";
+      } else {
+        paySuccessBtn.innerHTML = "🔒 Pay ₹199.00 (Simulate Success)";
+      }
+    }
+  };
+
+  tabs.forEach((tab) => {
+    tab.onclick = (e) => {
+      e.preventDefault();
+      const target = tab.getAttribute("data-tab");
+      switchTab(target);
+    };
+  });
+
+  // Default to UPI tab on each open
+  switchTab("upi");
+
   modal.style.display = "flex";
 
   const cleanup = () => {
