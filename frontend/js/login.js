@@ -145,18 +145,45 @@ if (forgotPasswordForm) {
         mail: mailId
       });
 
+      const forgotResultBox = document.getElementById("forgotResultBox");
+      const link = response.data?.resetLink || response.data?.resetUrl;
+
+      if (forgotResultBox) {
+        forgotResultBox.style.display = "block";
+        forgotResultBox.innerHTML = `
+          <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 12px; margin-top: 6px;">
+            <div style="color: #34d399; font-weight: 700; font-size: 0.92rem; margin-bottom: 4px;">
+              ✅ Reset Link Ready for Authenticated User!
+            </div>
+            <p style="font-size: 0.8rem; color: #cbd5e1; margin: 4px 0 10px 0; line-height: 1.4;">
+              Password reset link has been created for verified user: <strong>${mailId}</strong>.
+            </p>
+            ${link ? `<a href="${link}" style="display: block; text-align: center; background: #10b981; color: #ffffff; text-decoration: none; font-weight: 700; padding: 10px 14px; border-radius: 6px; font-size: 0.88rem; box-shadow: 0 2px 8px rgba(16,185,129,0.3);">👉 Click Here to Reset Password Now</a>` : ""}
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 8px; line-height: 1.3;">
+              💡 <em>To deliver straight to Gmail inboxes, you can configure your free Brevo API key or Gmail App password in <code>.env</code>.</em>
+            </div>
+          </div>
+        `;
+      }
+
       if (message) {
         message.style.color = "#34d399";
-        const link = response.data?.resetLink || response.data?.resetUrl
-          ? `<br><br><a href="${response.data.resetLink || response.data.resetUrl}" style="color: #6ee7b7; font-weight: bold; text-decoration: underline;">👉 Click here to Reset Password Now</a>`
-          : "";
-        message.innerHTML = `✅ ${response.data.message || "Reset password link sent to your email."}${link}`;
+        message.textContent = `✅ ${response.data.message || "Reset password link generated."}`;
       }
       forgotPasswordForm.reset();
     } catch (error) {
+      const forgotResultBox = document.getElementById("forgotResultBox");
+      const errorMsg = error.response?.data?.message || error.message || "Could not send reset mail.";
+      if (forgotResultBox) {
+        forgotResultBox.style.display = "block";
+        forgotResultBox.innerHTML = `
+          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 10px; margin-top: 6px; color: #f87171; font-size: 0.82rem;">
+            ❌ ${errorMsg}
+          </div>
+        `;
+      }
       if (message) {
         message.style.color = "#f43f5e";
-        const errorMsg = error.response?.data?.message || error.message || "Could not send reset mail.";
         message.textContent = `❌ ${errorMsg}`;
       }
     } finally {

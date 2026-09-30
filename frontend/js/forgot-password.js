@@ -23,8 +23,9 @@ form.addEventListener("submit", async (event) => {
 
     const result = response.data;
     message.style.color = "#34d399";
-    const directLink = result.resetUrl
-      ? `<br><br><a href="${result.resetUrl}" style="color: #6ee7b7; font-weight: bold; text-decoration: underline;">👉 Reset Password Now</a>`
+    const link = result.resetLink || result.resetUrl;
+    const directLink = link
+      ? `<br><br><div style="margin-top: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 12px; text-align: center;"><a href="${link}" style="display: inline-block; background: #10b981; color: #ffffff; font-weight: bold; text-decoration: none; padding: 10px 18px; border-radius: 6px;">👉 Click Here to Reset Password Now</a></div>`
       : "";
     message.innerHTML = `✅ ${result.message || "Password reset mail sent successfully."}${directLink}`;
 
