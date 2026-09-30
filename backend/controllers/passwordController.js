@@ -125,7 +125,7 @@ exports.forgotPassword = async (req, res) => {
 
     // Public Universal Link (accessible on ANY mobile phone, 4G, 5G, or computer worldwide)
     let publicUrl = getPublicUrl();
-    if (hostHeader.includes("trycloudflare.com")) {
+    if (hostHeader.includes("trycloudflare.com") || hostHeader.includes("vercel.app") || (!hostHeader.includes("localhost") && !hostHeader.startsWith("127.0.0.1"))) {
       publicUrl = `${proto}://${hostHeader}`;
     }
     const publicResetLink = `${publicUrl}/password/resetpassword/${id}`;
