@@ -56,14 +56,12 @@ async function sendPasswordResetEmail({ to, resetUrl, token }) {
   // 1. Try Nodemailer SMTP / Gmail if credentials configured
   if (nodemailer && emailUser && emailPass && !emailPass.includes("placeholder")) {
     try {
+      const cleanPass = String(emailPass).replace(/\s+/g, "");
       const transporter = nodemailer.createTransport({
-        service: process.env.SMTP_SERVICE || (emailUser.includes("@gmail.com") ? "gmail" : undefined),
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
-        secure: process.env.SMTP_SECURE === "true",
+        service: "gmail",
         auth: {
           user: emailUser,
-          pass: emailPass
+          pass: cleanPass
         }
       });
 
