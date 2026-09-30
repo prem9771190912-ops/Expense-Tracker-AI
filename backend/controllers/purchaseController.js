@@ -54,7 +54,7 @@ exports.createPremiumOrder = async (req, res) => {
     }
 
     // Standard Premium Membership fee in INR (e.g. ₹199.00)
-    const amount = Number(req.body.amount) || 199.00;
+    const amount = Number(req.body?.amount || req.query?.amount) || 199.00;
 
     // Generate unique alphanumeric order ID for Cashfree
     const cleanUserId = String(user._id || user.id || "user")
@@ -63,7 +63,7 @@ exports.createPremiumOrder = async (req, res) => {
     const orderId = `order_${cleanUserId}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
     // Prepare Customer Details (Cashfree requires customer_id, customer_phone, customer_email)
-    const customerPhone = String(user.phone || req.body.phone || "9999999999").replace(/[^0-9]/g, "").slice(-10) || "9999999999";
+    const customerPhone = String(user.phone || req.body?.phone || "9999999999").replace(/[^0-9]/g, "").slice(-10) || "9999999999";
     const customerId = `cust_${cleanUserId}_${Date.now()}`.slice(0, 45);
 
     const createOrderRequest = {
@@ -119,7 +119,15 @@ exports.createPremiumOrder = async (req, res) => {
       order_id: returnedOrderId,
       // camelCase aliases for convenience
       paymentSessionId: paymentSessionId,
-      orderId: returnedOrderId
+      orderId: returnedOrderId,
+      order: {
+        id: returnedOrderId,
+        order_id: returnedOrderId,
+        amount: amount,
+        currency: "INR",
+        status: "PENDING",
+        payment_session_id: paymentSessionId
+      }
     });
   } catch (error) {
     console.error("Cashfree createPremiumOrder error:", error.response?.data || error.message);
@@ -273,37 +281,61 @@ exports.purchasePremium = async (req, res) => {
 };
 
 exports.updateTransactionStatus = async (req, res) => {
-  // Legacy Razorpay status updater
+  // Legacy Razorpay / backwards-compatibility status updater
   try {
-    const { order_id, payment_id, status } = req.body;
+    const { order_id, orderId, payment_id, status } = req.body;
+    const targetOrderId = order_id || orderId;
     const email = req.user.email;
 
-    if (order_id) {
-      await Order.updateOne(
-        { orderId: order_id },
-        { paymentSessionId: payment_id || `pay_${Date.now()}`, status: status || "SUCCESSFUL" }
+    const isSuccess = status === "SUCCESSFUL" || (!status && payment_id);
+
+    if (isSuccess) {
+      if (targetOrderId) {
+        await Order.updateOne(
+          { $or: [{ orderId: targetOrderId }, { orderid: targetOrderId }] },
+          { paymentSessionId: payment_id || `pay_${Date.now()}`, status: "SUCCESSFUL" }
+        );
+      }
+
+      await User.updateOne(
+        { email },
+        { $set: { ispremiumuser: true, isPremium: true } }
       );
+      if (req.user._id) {
+        await User.findByIdAndUpdate(req.user._id, {
+          $set: { isPremium: true, ispremiumuser: true }
+        });
+      }
+
+      const updatedUser = await db.getUser(email);
+      if (updatedUser) {
+        updatedUser.ispremiumuser = true;
+        updatedUser.isPremium = true;
+      }
+      const token = generateToken(updatedUser || req.user);
+
+      return res.status(202).json({
+        success: true,
+        status: "SUCCESSFUL",
+        message: "Transaction Successful",
+        token
+      });
+    } else {
+      // Payment failed
+      if (targetOrderId) {
+        await Order.updateOne(
+          { $or: [{ orderId: targetOrderId }, { orderid: targetOrderId }] },
+          { status: "FAILED" }
+        );
+      }
+      return res.status(400).json({
+        success: false,
+        status: "FAILED",
+        message: "TRANSACTION FAILED"
+      });
     }
-
-    await User.updateOne(
-      { email },
-      { $set: { ispremiumuser: true, isPremium: true } }
-    );
-
-    const updatedUser = await db.getUser(email);
-    if (updatedUser) {
-      updatedUser.ispremiumuser = true;
-      updatedUser.isPremium = true;
-    }
-    const token = generateToken(updatedUser || req.user);
-
-    return res.status(202).json({
-      success: true,
-      message: "Transaction Successful",
-      token
-    });
   } catch (error) {
-    console.error("updateTransactionStatus legacy error:", error.message);
+    console.error("updateTransactionStatus error:", error.message);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
