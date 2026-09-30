@@ -756,7 +756,21 @@ function openCashfreeModal(orderId, paymentSessionId, amount) {
     netbanking: document.getElementById("cfTabNetbanking")
   };
 
+  const formWrap = document.getElementById("cfPaymentFormWrap");
+  const waitingScreen = document.getElementById("cfWaitingScreen");
+  const upiInput = document.getElementById("cfUpiInput");
+  const upiPreview = document.getElementById("cfUpiPreview");
+  const targetUpiDisplay = document.getElementById("cfTargetUpiDisplay");
+  const countdownTimer = document.getElementById("cfCountdownTimer");
+  const approvedBtn = document.getElementById("cfApprovedBtn");
+  const declineBtn = document.getElementById("cfDeclineBtn");
+  const handleBtns = modal.querySelectorAll(".cf-handle-btn");
+
+  let activeTabName = "upi";
+  let timerInterval = null;
+
   const switchTab = (targetTab) => {
+    activeTabName = targetTab;
     tabs.forEach((t) => {
       const isCurrent = t.getAttribute("data-tab") === targetTab;
       t.classList.toggle("active", isCurrent);
@@ -774,7 +788,7 @@ function openCashfreeModal(orderId, paymentSessionId, amount) {
       } else if (targetTab === "netbanking") {
         paySuccessBtn.innerHTML = "🔒 Pay ₹199.00 via NetBanking (Simulate Success)";
       } else {
-        paySuccessBtn.innerHTML = "🔒 Pay ₹199.00 (Simulate Success)";
+        paySuccessBtn.innerHTML = "📲 Send ₹199.00 Request to UPI App";
       }
     }
   };
@@ -784,6 +798,28 @@ function openCashfreeModal(orderId, paymentSessionId, amount) {
       e.preventDefault();
       const target = tab.getAttribute("data-tab");
       switchTab(target);
+    };
+  });
+
+  // --- Dynamic UPI Input & Suffix Handles ---
+  if (upiInput && upiPreview) {
+    upiInput.oninput = (e) => {
+      const val = e.target.value.trim();
+      upiPreview.textContent = val || "your-upi@handle";
+    };
+  }
+
+  handleBtns.forEach((btn) => {
+    btn.onclick = () => {
+      if (!upiInput) return;
+      const handle = btn.getAttribute("data-handle");
+      let currentVal = upiInput.value.trim();
+      if (currentVal.includes("@")) {
+        currentVal = currentVal.split("@")[0];
+      }
+      upiInput.value = (currentVal || "user") + handle;
+      if (upiPreview) upiPreview.textContent = upiInput.value;
+      upiInput.focus();
     };
   });
 
@@ -821,16 +857,44 @@ function openCashfreeModal(orderId, paymentSessionId, amount) {
     };
   }
 
-  // Default to UPI tab on each open
+  // Reset views on open
+  if (formWrap) formWrap.style.display = "block";
+  if (waitingScreen) waitingScreen.style.display = "none";
   switchTab("upi");
 
   modal.style.display = "flex";
 
+  const startCountdown = () => {
+    let timeLeft = 300; // 5 minutes
+    if (timerInterval) clearInterval(timerInterval);
+    const updateTime = () => {
+      const m = Math.floor(timeLeft / 60).toString().padStart(2, "0");
+      const s = (timeLeft % 60).toString().padStart(2, "0");
+      if (countdownTimer) countdownTimer.textContent = `${m}:${s}`;
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        cleanup();
+        handlePaymentStatusUpdate(orderId, false);
+      }
+      timeLeft--;
+    };
+    updateTime();
+    timerInterval = setInterval(updateTime, 1000);
+  };
+
   const cleanup = () => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
     modal.style.display = "none";
+    if (formWrap) formWrap.style.display = "block";
+    if (waitingScreen) waitingScreen.style.display = "none";
     if (closeBtn) closeBtn.onclick = null;
     if (paySuccessBtn) paySuccessBtn.onclick = null;
     if (payFailBtn) payFailBtn.onclick = null;
+    if (approvedBtn) approvedBtn.onclick = null;
+    if (declineBtn) declineBtn.onclick = null;
   };
 
   if (closeBtn) {
@@ -849,8 +913,31 @@ function openCashfreeModal(orderId, paymentSessionId, amount) {
 
   if (paySuccessBtn) {
     paySuccessBtn.onclick = () => {
-      cleanup();
-      handlePaymentStatusUpdate(orderId, true);
+      if (activeTabName === "upi") {
+        // Switch to Waiting Screen for UPI confirmation
+        const chosenUpi = upiInput ? (upiInput.value.trim() || "success@cashfree") : "success@cashfree";
+        if (targetUpiDisplay) targetUpiDisplay.textContent = chosenUpi;
+        if (formWrap) formWrap.style.display = "none";
+        if (waitingScreen) waitingScreen.style.display = "block";
+        startCountdown();
+
+        if (approvedBtn) {
+          approvedBtn.onclick = () => {
+            cleanup();
+            handlePaymentStatusUpdate(orderId, true);
+          };
+        }
+        if (declineBtn) {
+          declineBtn.onclick = () => {
+            cleanup();
+            handlePaymentStatusUpdate(orderId, false);
+          };
+        }
+      } else {
+        // Direct simulation for Card or Net Banking
+        cleanup();
+        handlePaymentStatusUpdate(orderId, true);
+      }
     };
   }
 }

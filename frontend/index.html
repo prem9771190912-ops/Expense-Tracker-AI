@@ -211,90 +211,162 @@
                 </div>
             </div>
 
-            <div class="cf-methods-wrap">
-                <div class="cf-methods-tabs">
-                    <button type="button" class="cf-tab active" data-tab="upi">⚡ Instant UPI</button>
-                    <button type="button" class="cf-tab" data-tab="card">💳 Card</button>
-                    <button type="button" class="cf-tab" data-tab="netbanking">🏦 Net Banking</button>
+            <!-- Form Wrap: Shown during method selection -->
+            <div id="cfPaymentFormWrap">
+                <div class="cf-methods-wrap">
+                    <div class="cf-methods-tabs">
+                        <button type="button" class="cf-tab active" data-tab="upi">⚡ Instant UPI</button>
+                        <button type="button" class="cf-tab" data-tab="card">💳 Card</button>
+                        <button type="button" class="cf-tab" data-tab="netbanking">🏦 Net Banking</button>
+                    </div>
+                    
+                    <div class="cf-tab-content">
+                        <!-- UPI Tab with Crystal Clear Collect Flow -->
+                        <div id="cfTabUpi" class="cf-tab-pane">
+                            <div class="cf-upi-banner">
+                                <span style="font-size: 1.2rem;">📲</span>
+                                <div>
+                                    <strong style="color: #ffffff;">UPI Collect Request:</strong> Enter your UPI ID (Google Pay, PhonePe, Paytm, CRED). When you click Pay, a <strong>Collect Request for ₹199.00</strong> will be sent to your UPI App on your phone for PIN confirmation.
+                                </div>
+                            </div>
+
+                            <!-- 3 Step Visual Guide -->
+                            <div class="cf-upi-steps">
+                                <div class="cf-upi-step">
+                                    <div class="cf-upi-step-icon">1️⃣</div>
+                                    <div class="cf-upi-step-title">Enter UPI ID</div>
+                                    <div class="cf-upi-step-desc">e.g. mobile@paytm or user@okaxis</div>
+                                </div>
+                                <div class="cf-upi-step">
+                                    <div class="cf-upi-step-icon">2️⃣</div>
+                                    <div class="cf-upi-step-title">Open UPI App</div>
+                                    <div class="cf-upi-step-desc">Receive ₹199 collect notification</div>
+                                </div>
+                                <div class="cf-upi-step">
+                                    <div class="cf-upi-step-icon">3️⃣</div>
+                                    <div class="cf-upi-step-title">Approve & PIN</div>
+                                    <div class="cf-upi-step-desc">Instant Premium membership unlocked</div>
+                                </div>
+                            </div>
+
+                            <div class="cf-upi-options" style="margin-top: 10px;">
+                                <label for="cfUpiInput" style="font-size: 0.78rem; color: #9ca3af; display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Enter Virtual Payment Address (UPI ID)</span>
+                                    <span style="color: #818cf8; font-size: 0.72rem; font-weight: 600;">GPay • PhonePe • Paytm • BHIM</span>
+                                </label>
+                                <input type="text" id="cfUpiInput" class="cf-input" value="success@cashfree" placeholder="e.g. 9876543210@paytm or name@okaxis" style="margin-top: 6px;">
+                                
+                                <!-- Quick Suffix Chips -->
+                                <div class="cf-upi-handles">
+                                    <span style="font-size: 0.7rem; color: #6b7280; line-height: 24px;">Quick handles:</span>
+                                    <button type="button" class="cf-handle-btn" data-handle="@okhdfcbank">@okhdfcbank</button>
+                                    <button type="button" class="cf-handle-btn" data-handle="@oksbi">@oksbi</button>
+                                    <button type="button" class="cf-handle-btn" data-handle="@paytm">@paytm</button>
+                                    <button type="button" class="cf-handle-btn" data-handle="@ybl">@ybl</button>
+                                    <button type="button" class="cf-handle-btn" data-handle="@ibl">@ibl</button>
+                                </div>
+
+                                <div style="background: rgba(0,0,0,0.35); border: 1px dashed rgba(99,102,241,0.35); border-radius: 6px; padding: 8px 10px; font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 8px;">
+                                    <span>🔔</span>
+                                    <span>Collect request will be sent to: <strong id="cfUpiPreview" style="color: #38bdf8;">success@cashfree</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Tab -->
+                        <div id="cfTabCard" class="cf-tab-pane" style="display: none;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div>
+                                    <label for="cfCardNumber" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Card Number</label>
+                                    <input type="text" id="cfCardNumber" class="cf-input" placeholder="4111 2222 3333 4444" maxlength="19" value="4111 2222 3333 4444" autocomplete="cc-number">
+                                </div>
+                                <div>
+                                    <label for="cfCardName" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Cardholder Name</label>
+                                    <input type="text" id="cfCardName" class="cf-input" placeholder="Name on card" value="Prem Kumar" autocomplete="cc-name">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <label for="cfCardExpiry" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Valid Thru (MM/YY)</label>
+                                        <input type="text" id="cfCardExpiry" class="cf-input" placeholder="12/28" maxlength="5" value="12/28" autocomplete="cc-exp">
+                                    </div>
+                                    <div>
+                                        <label for="cfCardCvv" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">CVV</label>
+                                        <input type="password" id="cfCardCvv" class="cf-input" placeholder="123" maxlength="4" value="123" autocomplete="cc-csc">
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px;">
+                                    <span>✓</span> Editable sandbox test card (Type your own card or keep test values)
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Net Banking Tab -->
+                        <div id="cfTabNetbanking" class="cf-tab-pane" style="display: none;">
+                            <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 8px; display: block;">Select Popular Bank</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+                                <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                    <input type="radio" name="cfBank" value="HDFC" checked>
+                                    <span>🏛️ HDFC Bank</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                    <input type="radio" name="cfBank" value="SBI">
+                                    <span>🏛️ SBI Bank</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                    <input type="radio" name="cfBank" value="ICICI">
+                                    <span>🏛️ ICICI Bank</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
+                                    <input type="radio" name="cfBank" value="AXIS">
+                                    <span>🏛️ Axis Bank</span>
+                                </label>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px; margin-top: 6px;">
+                                <span>✓</span> Instant Sandbox authorization active
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="cf-tab-content">
-                    <!-- UPI Tab -->
-                    <div id="cfTabUpi" class="cf-tab-pane">
-                        <div class="cf-upi-options">
-                            <label class="cf-upi-option">
-                                <input type="radio" name="cfUpiApp" checked>
-                                <span>UPI ID / VPA</span>
-                            </label>
-                            <input type="text" id="cfUpiInput" class="cf-input" value="success@cashfree" placeholder="e.g. mobile@upi or success@cashfree" style="margin-top: 8px;">
-                            <span style="font-size: 0.72rem; color: #9ca3af; margin-top: 4px; display: block;">
-                                💡 Tip: You can edit or use <code>success@cashfree</code> for instant sandbox approval.
-                            </span>
-                        </div>
-                    </div>
 
-                    <!-- Card Tab -->
-                    <div id="cfTabCard" class="cf-tab-pane" style="display: none;">
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <div>
-                                <label for="cfCardNumber" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Card Number</label>
-                                <input type="text" id="cfCardNumber" class="cf-input" placeholder="4111 2222 3333 4444" maxlength="19" value="4111 2222 3333 4444" autocomplete="cc-number">
-                            </div>
-                            <div>
-                                <label for="cfCardName" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Cardholder Name</label>
-                                <input type="text" id="cfCardName" class="cf-input" placeholder="Name on card" value="Prem Kumar" autocomplete="cc-name">
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                <div>
-                                    <label for="cfCardExpiry" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">Valid Thru (MM/YY)</label>
-                                    <input type="text" id="cfCardExpiry" class="cf-input" placeholder="12/28" maxlength="5" value="12/28" autocomplete="cc-exp">
-                                </div>
-                                <div>
-                                    <label for="cfCardCvv" style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; display: block;">CVV</label>
-                                    <input type="password" id="cfCardCvv" class="cf-input" placeholder="123" maxlength="4" value="123" autocomplete="cc-csc">
-                                </div>
-                            </div>
-                            <div style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px;">
-                                <span>✓</span> Editable sandbox test card (Type your own card or keep test values)
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Net Banking Tab -->
-                    <div id="cfTabNetbanking" class="cf-tab-pane" style="display: none;">
-                        <label style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 8px; display: block;">Select Popular Bank</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
-                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
-                                <input type="radio" name="cfBank" value="HDFC" checked>
-                                <span>🏛️ HDFC Bank</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
-                                <input type="radio" name="cfBank" value="SBI">
-                                <span>🏛️ SBI Bank</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
-                                <input type="radio" name="cfBank" value="ICICI">
-                                <span>🏛️ ICICI Bank</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #e5e7eb;">
-                                <input type="radio" name="cfBank" value="AXIS">
-                                <span>🏛️ Axis Bank</span>
-                            </label>
-                        </div>
-                        <div style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px; margin-top: 6px;">
-                            <span>✓</span> Instant Sandbox authorization active
-                        </div>
-                    </div>
+                <div class="cf-actions">
+                    <button type="button" id="cfPaySuccessBtn" class="cf-btn-pay">
+                        📲 Send ₹199.00 Request to UPI App
+                    </button>
+                    <button type="button" id="cfPayFailBtn" class="cf-btn-cancel">
+                        ✕ Cancel Payment (Simulate Failure)
+                    </button>
                 </div>
             </div>
 
-            <div class="cf-actions">
-                <button type="button" id="cfPaySuccessBtn" class="cf-btn-pay">
-                    🔒 Pay ₹199.00 (Simulate Success)
-                </button>
-                <button type="button" id="cfPayFailBtn" class="cf-btn-cancel">
-                    ✕ Cancel Payment (Simulate Failure)
-                </button>
+            <!-- Waiting Screen: Displayed when user clicks Send Request on UPI -->
+            <div id="cfWaitingScreen" class="cf-waiting-screen" style="display: none;">
+                <div class="cf-waiting-phone">📲</div>
+                <h3 class="cf-waiting-title">Payment Request Sent to your Phone!</h3>
+                <p class="cf-waiting-subtitle">
+                    A collect request of <strong>₹199.00</strong> was sent to your UPI App:
+                </p>
+                <div id="cfTargetUpiDisplay" class="cf-target-badge">success@cashfree</div>
+
+                <div class="cf-timer-box">
+                    <span>⏳ Approval request expires in:</span>
+                    <span id="cfCountdownTimer" class="cf-timer-countdown">04:59</span>
+                </div>
+
+                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px; text-align: left; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 16px; line-height: 1.5;">
+                    <strong style="color: #f8fafc; display: block; margin-bottom: 6px;">📱 Steps to confirm on your mobile:</strong>
+                    1. Open your <strong>UPI App</strong> (Google Pay, PhonePe, Paytm, or BHIM).<br>
+                    2. Check the incoming collect notification from <strong>SpendWise AI / Cashfree</strong>.<br>
+                    3. Tap <strong>Approve / Pay ₹199.00</strong> and enter your UPI PIN.
+                </div>
+
+                <div class="cf-actions">
+                    <button type="button" id="cfApprovedBtn" class="cf-btn-pay" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        ✅ I Approved in UPI App (Complete Payment)
+                    </button>
+                    <button type="button" id="cfDeclineBtn" class="cf-btn-cancel">
+                        ✕ Decline / Cancel in UPI App
+                    </button>
+                </div>
             </div>
 
             <div class="cf-footer-note">
@@ -303,7 +375,7 @@
         </div>
     </div>
 
-    <script type="module" src="script.js?v=2.5"></script>
+    <script type="module" src="script.js?v=2.6"></script>
 </body>
 
 </html>
