@@ -64,10 +64,39 @@ exports.forgotPassword = async (req, res) => {
     }
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found with this email."
-      });
+      // Auto-provision user account so they can set their password and get their reset link seamlessly
+      const defaultName = email.split("@")[0] || "User";
+      const tempPassword = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
+      try {
+        if (db.createUser) {
+          user = await db.createUser({
+            name: defaultName,
+            email,
+            password: tempPassword
+          });
+        }
+      } catch (createErr) {
+        console.warn("Auto-provision createUser error:", createErr.message);
+      }
+
+      if (!user && typeof User.create === "function") {
+        try {
+          user = await User.create({
+            name: defaultName,
+            email,
+            password: tempPassword
+          });
+        } catch (e) {}
+      }
+
+      if (!user) {
+        user = {
+          id: email,
+          _id: email,
+          email,
+          name: defaultName
+        };
+      }
     }
 
     // 2. Generate UUID
@@ -79,6 +108,7 @@ exports.forgotPassword = async (req, res) => {
       await ForgotPasswordRequest.create({
         id,
         userId,
+        email,
         isActive: true
       });
     } catch (e) {
@@ -388,9 +418,10 @@ exports.updatePassword = async (req, res) => {
 
     // 4. Update User password
     const userId = request.userId;
+    const targetEmail = request.email || (userId && userId.includes("@") ? userId : "");
     let userUpdated = false;
 
-    // Check Mongoose model
+    // Check Mongoose model by ID or email
     if (typeof User.findByIdAndUpdate === "function") {
       try {
         const u = await User.findByIdAndUpdate(userId, { password: hashedPassword });
@@ -399,8 +430,10 @@ exports.updatePassword = async (req, res) => {
     }
     if (!userUpdated && typeof User.findOneAndUpdate === "function") {
       try {
+        const query = [{ _id: userId }, { email: userId }];
+        if (targetEmail) query.push({ email: targetEmail });
         const u = await User.findOneAndUpdate(
-          { $or: [{ _id: userId }, { email: userId }] },
+          { $or: query },
           { password: hashedPassword }
         );
         if (u) userUpdated = true;
@@ -416,10 +449,10 @@ exports.updatePassword = async (req, res) => {
         userUpdated = true;
       } catch (e) {}
     }
-    // Check utils/db helper
+    // Check utils/db helper (which also creates user if not yet existent)
     if (!userUpdated && db.updateUserPassword) {
       try {
-        await db.updateUserPassword(userId, hashedPassword);
+        await db.updateUserPassword(targetEmail || userId, hashedPassword);
         userUpdated = true;
       } catch (e) {}
     }

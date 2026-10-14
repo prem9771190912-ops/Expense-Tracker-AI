@@ -57,6 +57,12 @@ const forgotPasswordRequestSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    default: ""
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -74,11 +80,12 @@ const MongooseModel = mongoose.models.ForgotPasswordRequest ||
 // 3. Unified Interface Wrapper (Works seamlessly in both Mongoose & Sequelize)
 // ============================================================================
 class ForgotPasswordRequestWrapper {
-  static async create({ id, userId, isActive = true }) {
+  static async create({ id, userId, email = "", isActive = true }) {
     const finalId = id || uuidv4();
     const doc = await MongooseModel.create({
       id: finalId,
       userId: String(userId),
+      email: String(email || "").trim().toLowerCase(),
       isActive: Boolean(isActive)
     });
     return this._wrap(doc);
@@ -111,6 +118,7 @@ class ForgotPasswordRequestWrapper {
     return {
       id: doc.id,
       userId: doc.userId,
+      email: doc.email || "",
       isActive: doc.isActive,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
