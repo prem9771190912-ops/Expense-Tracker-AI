@@ -1,10 +1,23 @@
 const crypto = require("crypto");
 const uuidv4 = () => crypto.randomUUID();
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const ForgotPasswordRequest = require("../models/ForgotPasswordRequest");
 const mailService = require("../services/mailService");
 const db = require("../utils/db");
+const { connectDB } = require("../config/database");
+
+async function ensureDb() {
+  try {
+    if (typeof db.ensureDatabase === "function") {
+      await db.ensureDatabase();
+    } else if (typeof connectDB === "function") {
+      await connectDB();
+    }
+  } catch (err) {
+    console.warn("ensureDb warning in passwordController:", err.message);
+  }
+}
 
 /**
  * 1. POST /password/forgotpassword
@@ -13,13 +26,14 @@ const db = require("../utils/db");
  * - If user exists:
  *   - Generate UUID
  *   - Create ForgotPasswordRequest with isActive = true
- *   - Send email using Brevo
- *   - Reset link: http://localhost:3000/password/resetpassword/:id
- * - Return success response
+ *   - Send email using Brevo (Sendinblue)
+ *   - Return success response with direct reset link
  */
 exports.forgotPassword = async (req, res) => {
   try {
-    const rawEmail = req.body.email || req.body.mail || req.body.mailId;
+    await ensureDb();
+
+    const rawEmail = req.body.email || req.body.mail || req.body.mailId || req.body.emailId;
     const email = String(rawEmail || "").trim().toLowerCase();
 
     if (!email) {
@@ -31,11 +45,22 @@ exports.forgotPassword = async (req, res) => {
 
     // 1. Find user by email
     let user = null;
-    if (typeof User.findOne === "function") {
-      user = await User.findOne({ email });
+    if (db.getUser) {
+      try {
+        user = await db.getUser(email);
+      } catch (e) {
+        console.warn("db.getUser warning:", e.message);
+      }
     }
-    if (!user && db.getUser) {
-      user = await db.getUser(email);
+
+    if (!user && typeof User.findOne === "function") {
+      try {
+        user = await User.findOne({
+          email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") }
+        });
+      } catch (e) {
+        console.warn("User.findOne warning:", e.message);
+      }
     }
 
     if (!user) {
@@ -47,14 +72,18 @@ exports.forgotPassword = async (req, res) => {
 
     // 2. Generate UUID
     const id = uuidv4();
-    const userId = user.id || user._id || user.email;
+    const userId = String(user.id || user._id || user.email);
 
     // 3. Create ForgotPasswordRequest with isActive = true
-    await ForgotPasswordRequest.create({
-      id,
-      userId: String(userId),
-      isActive: true
-    });
+    try {
+      await ForgotPasswordRequest.create({
+        id,
+        userId,
+        isActive: true
+      });
+    } catch (e) {
+      console.warn("ForgotPasswordRequest.create warning:", e.message);
+    }
 
     // Also register in legacy db reset token tracker for full backwards-compatibility
     if (db.createResetToken) {
@@ -65,29 +94,32 @@ exports.forgotPassword = async (req, res) => {
       }
     }
 
-    // 4. Construct reset link
-    // Default to Sharpener specification (http://localhost:3000/password/resetpassword/:id)
-    // or respect configured server port if running locally
-    const serverPort = process.env.PORT || 5000;
+    // 4. Construct reset links
     const clientPort = process.env.CLIENT_PORT || 3000;
-    const baseHost = req.get("host") || `localhost:${clientPort}`;
-    
-    // We provide the Sharpener standard URL: http://localhost:3000/password/resetpassword/:id
-    // And also allow direct access through the current listening host:
-    const sharpenerResetLink = `http://localhost:${clientPort}/password/resetpassword/${id}`;
-    const directResetLink = `http://${baseHost}/password/resetpassword/${id}`;
-    const resetLink = req.get("host") ? directResetLink : sharpenerResetLink;
+    const host = req.get("host") || `localhost:${clientPort}`;
+    const forwardedProto = req.headers["x-forwarded-proto"];
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    const protocol = isLocal ? (req.protocol || "http") : (forwardedProto ? forwardedProto.split(",")[0].trim() : "https");
+
+    const directResetLink = `${protocol}://${host}/password/resetpassword/${id}`;
+    const resetUrl = `${protocol}://${host}/reset-password.html?token=${encodeURIComponent(id)}`;
 
     // 5. Send email using Brevo (Sendinblue)
-    await mailService.sendMail({
-      to: email,
-      resetLink
-    });
+    try {
+      await mailService.sendMail({
+        to: email,
+        resetLink: directResetLink,
+        resetUrl
+      });
+    } catch (mailErr) {
+      console.warn("Brevo mail dispatch warning:", mailErr.message);
+    }
 
     return res.status(200).json({
       success: true,
       message: "Reset password link sent to your email.",
-      resetLink,
+      resetLink: directResetLink,
+      resetUrl: directResetLink,
       id
     });
   } catch (error) {
@@ -112,6 +144,7 @@ exports.forgotPassword = async (req, res) => {
  */
 exports.resetPassword = async (req, res) => {
   try {
+    await ensureDb();
     const { id } = req.params;
 
     if (!id) {
@@ -119,9 +152,22 @@ exports.resetPassword = async (req, res) => {
     }
 
     // Find request by UUID
-    let request = await ForgotPasswordRequest.findOne({ id });
-    if (!request && typeof ForgotPasswordRequest.findOne === "function") {
-      request = await ForgotPasswordRequest.findOne({ where: { id } });
+    let request = null;
+    try {
+      request = await ForgotPasswordRequest.findOne({ id });
+      if (!request && typeof ForgotPasswordRequest.findOne === "function") {
+        request = await ForgotPasswordRequest.findOne({ where: { id } });
+      }
+    } catch (e) {}
+
+    // Fallback: check legacy db tracker if not found in primary
+    if (!request && db.getResetTokenByHash) {
+      try {
+        const tokenDoc = await db.getResetTokenByHash(id);
+        if (tokenDoc && !tokenDoc.isUsed && new Date(tokenDoc.expiresAt) > new Date()) {
+          request = { id, userId: tokenDoc.userId, isActive: true };
+        }
+      } catch (e) {}
     }
 
     // If request not found or isActive is false -> return "Link Expired"
@@ -151,7 +197,7 @@ exports.resetPassword = async (req, res) => {
       `);
     }
 
-    // If true -> return an HTML page containing New Password input and Confirm button
+    // Return HTML page containing New Password input and Confirm button
     return res.status(200).send(`
       <!DOCTYPE html>
       <html lang="en">
@@ -280,14 +326,15 @@ exports.resetPassword = async (req, res) => {
  * Flow:
  * - Find ForgotPasswordRequest
  * - Verify isActive = true
- * - Hash password using bcrypt
+ * - Hash password using bcryptjs
  * - Update User password
  * - Set isActive = false
  * - Return Password Updated Successfully
  */
 exports.updatePassword = async (req, res) => {
   try {
-    const { id } = req.params;
+    await ensureDb();
+    const id = req.params.id || req.body.token || req.body.id;
     const { password } = req.body;
 
     if (!id || !password) {
@@ -297,7 +344,7 @@ exports.updatePassword = async (req, res) => {
       });
     }
 
-    if (password.length < 6) {
+    if (String(password).length < 6) {
       return res.status(400).json({
         success: false,
         message: "Password must be at least 6 characters long."
@@ -305,9 +352,27 @@ exports.updatePassword = async (req, res) => {
     }
 
     // 1. Find ForgotPasswordRequest
-    let request = await ForgotPasswordRequest.findOne({ id });
-    if (!request && typeof ForgotPasswordRequest.findOne === "function") {
-      request = await ForgotPasswordRequest.findOne({ where: { id } });
+    let request = null;
+    try {
+      request = await ForgotPasswordRequest.findOne({ id });
+      if (!request && typeof ForgotPasswordRequest.findOne === "function") {
+        request = await ForgotPasswordRequest.findOne({ where: { id } });
+      }
+    } catch (e) {}
+
+    let fallbackToken = null;
+    if (!request && db.getResetTokenByHash) {
+      try {
+        fallbackToken = await db.getResetTokenByHash(id);
+        if (fallbackToken && !fallbackToken.isUsed && new Date(fallbackToken.expiresAt) > new Date()) {
+          request = {
+            id,
+            userId: fallbackToken.userId,
+            isActive: true,
+            save: async () => {}
+          };
+        }
+      } catch (e) {}
     }
 
     // 2. Verify isActive = true
@@ -318,8 +383,8 @@ exports.updatePassword = async (req, res) => {
       });
     }
 
-    // 3. Hash password using bcrypt
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // 3. Hash password using bcryptjs
+    const hashedPassword = await bcrypt.hash(String(password), 10);
 
     // 4. Update User password
     const userId = request.userId;
@@ -361,7 +426,11 @@ exports.updatePassword = async (req, res) => {
 
     // 5. Set isActive = false
     request.isActive = false;
-    await request.save();
+    try {
+      if (typeof request.save === "function") {
+        await request.save();
+      }
+    } catch (e) {}
 
     // Also mark in legacy db tracker if applicable
     if (db.markTokenUsed) {

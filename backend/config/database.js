@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
 const dns = require("dns");
 
-try {
-  // Resolve MongoDB Atlas SRV records reliably across all ISPs/networks
-  dns.setServers(["8.8.8.8", "1.1.1.1"]);
-} catch (e) {
-  // Ignore fallback error
+if (!process.env.VERCEL) {
+  try {
+    // Resolve MongoDB Atlas SRV records reliably across all ISPs/networks locally
+    dns.setServers(["8.8.8.8", "1.1.1.1"]);
+  } catch (e) {
+    // Ignore fallback error
+  }
 }
 
 let cachedPromise = null;

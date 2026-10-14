@@ -11,7 +11,7 @@ const SibApiV3Sdk = require("sib-api-v3-sdk");
  */
 async function sendPasswordResetEmail({ to, resetUrl, token }) {
   const apiKey = process.env.SENDINBLUE_API_KEY || process.env.BREVO_API_KEY || process.env.SIB_API_KEY;
-  const senderEmail = process.env.SENDINBLUE_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || "support@expensetracker.com";
+  const senderEmail = process.env.SENDINBLUE_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || "prem9771190912@gmail.com";
   const senderName = process.env.SENDINBLUE_SENDER_NAME || "Expense Tracker";
 
   const emailSubject = "Reset Your Password — Expense Tracker";

@@ -8,9 +8,10 @@ const SibApiV3Sdk = require("sib-api-v3-sdk");
  * @param {string} options.resetLink - Password reset URL
  * @returns {Promise<Object>}
  */
-async function sendMail({ to, resetLink }) {
+async function sendMail({ to, resetLink, resetUrl }) {
+  const finalLink = resetLink || resetUrl;
   const apiKey = process.env.SENDINBLUE_API_KEY || process.env.BREVO_API_KEY || process.env.SIB_API_KEY;
-  const senderEmail = process.env.SENDINBLUE_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || "support@expensetracker.com";
+  const senderEmail = process.env.SENDINBLUE_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || "prem9771190912@gmail.com";
   const senderName = process.env.SENDINBLUE_SENDER_NAME || "Expense Tracker";
 
   const emailSubject = "Reset Your Password - Expense Tracker";
@@ -35,9 +36,9 @@ async function sendMail({ to, resetLink }) {
         <div class="brand">✦ SpendWise AI — Expense Tracker</div>
         <h2>Password Reset Request</h2>
         <p>You requested a password reset for your Expense Tracker account. Click the button below to set a new password:</p>
-        <p><a href="${resetLink}" class="btn" target="_blank">Reset Password</a></p>
+        <p><a href="${finalLink}" class="btn" target="_blank">Reset Password</a></p>
         <p>Or open this link directly in your browser:</p>
-        <div class="link-box">${resetLink}</div>
+        <div class="link-box">${finalLink}</div>
         <p>This reset link will expire shortly.</p>
         <div class="footer">If you did not make this request, you can safely ignore this email.</div>
       </div>
@@ -74,7 +75,7 @@ async function sendMail({ to, resetLink }) {
   console.log(`   To:         ${to}`);
   console.log(`   From:       ${senderName} <${senderEmail}>`);
   console.log(`   Subject:    ${emailSubject}`);
-  console.log(`   Reset Link: ${resetLink}`);
+  console.log(`   Reset Link: ${finalLink}`);
   console.log("=================================================================\n");
 
   return { success: true, simulated: true };
