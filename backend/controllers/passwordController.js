@@ -127,7 +127,7 @@ exports.forgotPassword = async (req, res) => {
     // 4. Construct reset links
     const clientPort = process.env.CLIENT_PORT || 3000;
     const host = req.get("host") || `localhost:${clientPort}`;
-    const forwardedProto = req.headers["x-forwarded-proto"];
+    const forwardedProto = (req.get && req.get("x-forwarded-proto")) || (req.headers && req.headers["x-forwarded-proto"]) || null;
     const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
     const protocol = isLocal ? (req.protocol || "http") : (forwardedProto ? forwardedProto.split(",")[0].trim() : "https");
 

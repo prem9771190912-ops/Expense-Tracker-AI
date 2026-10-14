@@ -1,17 +1,56 @@
+const nodemailer = require("nodemailer");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
 /**
- * Send password reset email using Sendinblue (Brevo)
+ * Creates a Nodemailer transporter.
+ * If SMTP_USER & SMTP_PASS are configured in .env, it uses Gmail SMTP (or custom SMTP).
+ */
+function createTransporter() {
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS || process.env.EMAIL_PASS || process.env.SMTP_PASSWORD;
+
+  if (!user || !pass || String(user).trim() === "" || String(pass).trim() === "") {
+    return null;
+  }
+
+  const service = process.env.SMTP_SERVICE || "gmail";
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+  const secure = process.env.SMTP_SECURE === "true" || port === 465;
+
+  if (service.toLowerCase() === "gmail") {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: String(user).trim(),
+        pass: String(pass).trim()
+      }
+    });
+  }
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user: String(user).trim(),
+      pass: String(pass).trim()
+    }
+  });
+}
+
+/**
+ * Send password reset email using Nodemailer (Gmail SMTP) with fallback to Brevo/Simulation
  *
  * @param {Object} options
  * @param {string} options.to - Recipient email address
  * @param {string} options.resetLink - Password reset URL
+ * @param {string} [options.resetUrl] - Optional alternate reset URL
  * @returns {Promise<Object>}
  */
 async function sendMail({ to, resetLink, resetUrl }) {
   const finalLink = resetLink || resetUrl;
-  const apiKey = process.env.SENDINBLUE_API_KEY || process.env.BREVO_API_KEY || process.env.SIB_API_KEY;
-  const senderEmail = process.env.SENDINBLUE_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || "prem9771190912@gmail.com";
+  const senderEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.SENDINBLUE_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || "prem9771190912@gmail.com";
   const senderName = process.env.SENDINBLUE_SENDER_NAME || "Expense Tracker";
 
   const emailSubject = "Reset Your Password - Expense Tracker";
@@ -46,7 +85,26 @@ async function sendMail({ to, resetLink, resetUrl }) {
     </html>
   `;
 
-  // If Sendinblue / Brevo API Key is configured, send transactional email
+  // 1. Try Nodemailer (Gmail / Custom SMTP) if credentials configured
+  const transporter = createTransporter();
+  if (transporter) {
+    try {
+      const fromAddress = senderEmail.includes("@") ? `"${senderName}" <${senderEmail}>` : senderEmail;
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to,
+        subject: emailSubject,
+        html: htmlContent
+      });
+      console.log(`[Nodemailer] Email dispatched to ${to}. MessageId:`, info.messageId);
+      return { success: true, messageId: info.messageId, provider: "nodemailer" };
+    } catch (err) {
+      console.warn(`[Nodemailer] Warning: Nodemailer SMTP error: ${err.message}. Checking Brevo / fallback.`);
+    }
+  }
+
+  // 2. Try Sendinblue / Brevo API Key if configured
+  const apiKey = process.env.SENDINBLUE_API_KEY || process.env.BREVO_API_KEY || process.env.SIB_API_KEY;
   if (apiKey && apiKey !== "your_sendinblue_api_key_here" && apiKey !== "demo_sendinblue_api_key") {
     try {
       const defaultClient = SibApiV3Sdk.ApiClient.instance;
@@ -63,22 +121,24 @@ async function sendMail({ to, resetLink, resetUrl }) {
 
       const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
       console.log(`[Sendinblue] Email sent to ${to}. MessageId:`, response.messageId);
-      return { success: true, messageId: response.messageId };
+      return { success: true, messageId: response.messageId, provider: "sendinblue" };
     } catch (error) {
       console.warn(`[Sendinblue] Warning: Sendinblue API error: ${error.message}. Running fallback simulation.`);
     }
   }
 
-  // Fallback / Development Simulation Log
+  // 3. Fallback / Development Simulation Log (when SMTP credentials are blank in .env)
   console.log("\n=================================================================");
-  console.log("📨 [BREVO / SENDINBLUE EMAIL DISPATCH]");
+  console.log("📨 [NODEMAILER / EMAIL DISPATCH SIMULATION]");
   console.log(`   To:         ${to}`);
   console.log(`   From:       ${senderName} <${senderEmail}>`);
   console.log(`   Subject:    ${emailSubject}`);
   console.log(`   Reset Link: ${finalLink}`);
+  console.log("   Notice:     SMTP_USER & SMTP_PASS in .env are currently blank.");
+  console.log("               Set SMTP_USER & SMTP_PASS in .env to deliver real emails to Gmail.");
   console.log("=================================================================\n");
 
-  return { success: true, simulated: true };
+  return { success: true, simulated: true, resetLink: finalLink };
 }
 
 module.exports = {
